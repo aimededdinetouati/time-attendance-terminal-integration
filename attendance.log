@@ -1,0 +1,18 @@
+2025-03-20 15:50:35,898 - __main__ - INFO - Starting attendance application
+2025-03-20 15:50:36,190 - src.api.api_client - INFO - XSRF Token retrieved successfully
+2025-03-20 15:50:36,830 - src.api.api_client - INFO - Authentication successful
+2025-03-20 15:50:36,830 - __main__ - INFO - API client initialized successfully
+2025-03-20 15:50:36,915 - src.device.attendance_processor - INFO - Successfully connected to ZK device
+2025-03-20 15:50:36,955 - src.device.attendance_processor - INFO - Device disabled for processing
+2025-03-20 15:51:46,050 - src.device.attendance_processor - INFO - Device re-enabled
+2025-03-20 15:51:46,068 - src.device.attendance_processor - INFO - Disconnected from ZK device
+2025-03-20 15:51:46,068 - __main__ - INFO - Attendance application completed
+2025-03-20 15:52:30,133 - __main__ - INFO - Starting attendance application
+2025-03-20 15:52:30,404 - src.api.api_client - INFO - XSRF Token retrieved successfully
+2025-03-20 15:52:30,971 - src.api.api_client - INFO - Authentication successful
+2025-03-20 15:52:30,972 - __main__ - INFO - API client initialized successfully
+2025-03-20 15:52:31,138 - src.device.attendance_processor - INFO - Successfully connected to ZK device
+2025-03-20 15:52:31,203 - src.device.attendance_processor - INFO - Device disabled for processing
+2025-03-20 15:52:36,905 - src.device.attendance_processor - INFO - Device re-enabled
+2025-03-20 15:52:36,952 - src.device.attendance_processor - INFO - Disconnected from ZK device
+2025-03-20 15:52:36,952 - __main__ - INFO - Attendance application completed
