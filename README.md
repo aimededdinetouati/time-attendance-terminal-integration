@@ -41,18 +41,18 @@ attendance-system/
 
 - Python 3.7 or higher
 - Network access to the ZK device
-- Network access to the API endpoints
+- Access to the and Rh-Partner account
 
 ### Setup
 
 1. Clone the repository:
 
    ```bash
-   git clone [repository-url] attendance-system
+   git clone https://github.com/business-platforms/time-attendance-terminal-integration.git
    cd attendance-system
    ```
 
-2. Create a virtual environment:
+2. Create a virtual environment (Optional):
 
    ```bash
    python -m venv venv
