@@ -25,8 +25,6 @@ class ConfigInterface:
             root: Tkinter root window, creates a new one if None
         """
         self.db_manager = db_manager or DatabaseManager()
-        self.is_main = root is None
-
         self.root = tk.Toplevel(root)
 
 
@@ -51,24 +49,9 @@ class ConfigInterface:
         self.create_form()
         self.load_config()
 
-    def setup_ui_variables(self):
-        """Initialize all UI variables."""
-        # These will be fully initialized in create_form
-        self.company_id_var = None
-        self.api_username_var = None
-        self.api_password_var = None
-        self.device_ip_var = None
-        self.device_port_var = None
-        self.collection_interval_var = None
-        self.upload_interval_var = None
 
     def show(self):
-        """Display the configuration interface."""
-        if self.is_main:
-            self.root.mainloop()
-        else:
-            # For Toplevel windows, make it modal
-            self.root.grab_set()
+        self.root.grab_set()
 
     def create_form(self):
         """Create and arrange the form components."""

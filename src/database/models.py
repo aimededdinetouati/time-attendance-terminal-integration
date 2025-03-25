@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, List
@@ -51,6 +52,37 @@ class Config:
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
+@dataclass
+class User:
+    id: Optional[int] = None
+    full_name: str = ""
+    created_at: Optional[datetime] = None
+
+    @staticmethod
+    def parse_zk_user(zk_user):
+        try:
+            return User(id=zk_user.user_id, full_name=zk_user.name)
+        except Exception as e:
+            print(f"Error parsing zk_user: {e}")
+            return None
+
+    @classmethod
+    def from_dict(cls, data):
+        if not data:
+            return None
+        return cls(
+            id=data.get('id'),
+            full_name=data.get('full_name', ''),
+            created_at = datetime.fromisoformat(data.get('created_at')) if data.get('created_at') else None,
+        )
+
+    @classmethod
+    def to_dic(cls):
+        return {
+            'id': cls.id,
+            'full_name': cls.full_name,
+            'created_at': cls.created_at.isoformat() if cls.created_at else None
+        }
 
 @dataclass
 class AttendanceRecord:

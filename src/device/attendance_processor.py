@@ -3,6 +3,8 @@ from zk import ZK, const
 from datetime import datetime
 import time
 
+from src.database.models import User
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,6 +31,20 @@ class AttendanceProcessor:
         if self.conn:
             self.conn.disconnect()
             logger.info("Disconnected from ZK device")
+
+    def get_users(self):
+        """Get users from the device"""
+        if not self.conn:
+            logger.error("Not connected to ZK device")
+            return None
+        try:
+            users = self.conn.get_users()
+            logger.info(f"Retrieved {len(users)} users")
+            return users
+        except Exception as e:
+            logger.error(f"Error retrieving users: {e}")
+            return []
+
 
     def get_attendance(self):
         """Get attendance records from the device."""

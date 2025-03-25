@@ -3,7 +3,7 @@ import os
 import logging
 from datetime import datetime
 import json
-from src.database.models import Config, AttendanceRecord, APIUploadLog
+from src.database.models import Config, User, AttendanceRecord, APIUploadLog
 
 logger = logging.getLogger(__name__)
 

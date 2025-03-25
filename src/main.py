@@ -12,6 +12,7 @@ from src.database.db_manager import DatabaseManager
 from src.ui.config_interface import ConfigInterface
 from src.scheduler.attendance_collector import AttendanceCollector
 from src.scheduler.api_uploader import APIUploader
+from src.ui.user_interface import UserInterface
 
 
 # Configure logging
@@ -101,7 +102,7 @@ class AttendanceSystemApp:
     def show_control_interface(self):
         """Show the control interface for managing the collectors."""
         self.root.title("Attendance System Control Panel")
-        self.root.geometry("400x300")
+        self.root.geometry("500x300")
 
         main_frame = ttk.Frame(self.root, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -124,6 +125,8 @@ class AttendanceSystemApp:
         self.stop_button.pack(side=tk.LEFT, padx=5)
 
         ttk.Button(button_frame, text="Configure", command=self.open_config).pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(button_frame, text="Users", command=self.open_list_users).pack(side=tk.LEFT, padx=5)
 
         # System info section
         info_frame = ttk.LabelFrame(main_frame, text="System Information")
@@ -184,6 +187,14 @@ class AttendanceSystemApp:
         # Override the show method to reuse the existing window
         orig_show = config_interface.show
         config_interface.show = lambda: None
+        orig_show()
+
+    def open_list_users(self):
+        users_interface = UserInterface(self.root, self.db_manager)
+
+        # Override the show method to reuse the existing window
+        orig_show = users_interface.show
+        users_interface.show = lambda: None
         orig_show()
 
     def on_close(self):
