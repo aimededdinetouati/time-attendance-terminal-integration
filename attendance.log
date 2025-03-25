@@ -16,3 +16,23 @@
 2025-03-20 15:52:36,905 - src.device.attendance_processor - INFO - Device re-enabled
 2025-03-20 15:52:36,952 - src.device.attendance_processor - INFO - Disconnected from ZK device
 2025-03-20 15:52:36,952 - __main__ - INFO - Attendance application completed
+2025-03-20 16:14:20,479 - __main__ - INFO - Starting attendance application
+2025-03-20 16:14:20,805 - src.api.api_client - INFO - XSRF Token retrieved successfully
+2025-03-20 16:14:21,437 - src.api.api_client - INFO - Authentication successful
+2025-03-20 16:14:21,438 - __main__ - INFO - API client initialized successfully
+2025-03-20 16:14:21,438 - src.device.attendance_processor - ERROR - Failed to connect to ZK device: name 'conn' is not defined
+2025-03-20 16:14:21,438 - __main__ - ERROR - Could not connect to ZK device. Exiting.
+2025-03-20 16:14:58,869 - __main__ - INFO - Starting attendance application
+2025-03-20 16:14:59,051 - src.api.api_client - INFO - XSRF Token retrieved successfully
+2025-03-20 16:14:59,616 - src.api.api_client - INFO - Authentication successful
+2025-03-20 16:14:59,616 - __main__ - INFO - API client initialized successfully
+2025-03-20 16:14:59,706 - src.device.attendance_processor - ERROR - Failed to connect to ZK device: name 'conn' is not defined
+2025-03-20 16:14:59,707 - __main__ - ERROR - Could not connect to ZK device. Exiting.
+2025-03-20 16:14:59,730 - src.device.attendance_processor - INFO - Disconnected from ZK device
+2025-03-20 16:15:23,538 - __main__ - INFO - Starting attendance application
+2025-03-20 16:15:23,799 - src.api.api_client - INFO - XSRF Token retrieved successfully
+2025-03-20 16:15:24,345 - src.api.api_client - INFO - Authentication successful
+2025-03-20 16:15:24,345 - __main__ - INFO - API client initialized successfully
+2025-03-20 16:15:24,433 - src.device.attendance_processor - ERROR - Failed to connect to ZK device: 'ZK' object has no attribute 'get_device_info'
+2025-03-20 16:15:24,433 - __main__ - ERROR - Could not connect to ZK device. Exiting.
+2025-03-20 16:15:24,465 - src.device.attendance_processor - INFO - Disconnected from ZK device

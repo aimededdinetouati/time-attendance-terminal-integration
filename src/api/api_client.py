@@ -1,109 +1,134 @@
-# api_client.py - API connection and authentication
-
 import requests
-import json
 import logging
-from config.config import API_URL, USERNAME, PASSWORD, COMPANY_ID
+import os
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+
 class APIClient:
-    def __init__(self):
-        self.session = None
+    def __init__(self, api_url, company_id, username, password):
+        """Initialize the API client with connection details."""
+        self.api_url = api_url.rstrip('/')
+        self.company_id = company_id
+        self.username = username
+        self.password = password
         self.xsrf_token = None
-        self.access_token = None
-    
-    def initialize(self):
-        """Initialize API connection by getting XSRF token and logging in."""
-        self.session, self.xsrf_token = self.get_xsrf_token()
-        if not self.xsrf_token:
-            raise Exception("Failed to retrieve XSRF token. Exiting...")
-            
-        self.access_token = self.login()
-        if not self.access_token:
-            raise Exception("Failed to authenticate. Exiting...")
-        
-        return self.access_token, self.xsrf_token
-            
-    def get_xsrf_token(self):
-        """Fetch the XSRF token from the /hello endpoint."""
-        hello_url = f"{API_URL}/auth/hello"
-        print(f"Request to {hello_url} to fecth the XSRF token")
-        session = requests.Session()  # Maintain session cookies
-        
+        self.jwt_token = None
+        self.session = requests.Session()
+
+    def authenticate(self):
+        """Authenticate with the API using XSRF and JWT."""
         try:
-            response = session.get(hello_url, timeout=5)
-            if response.status_code == 200:
-                xsrf_token = response.cookies.get("XSRF-TOKEN")
-                logger.info(f"XSRF Token retrieved successfully")
-                return session, xsrf_token
+            # Step 1: Get XSRF token
+            response = self.session.get(f"{self.api_url}/auth/hello")
+            if response.status_code != 200:
+                logger.error(f"Failed to get XSRF token: {response.status_code}")
+                return False
+
+            # Extract XSRF token from cookies
+            if 'XSRF-TOKEN' in self.session.cookies:
+                self.xsrf_token = self.session.cookies['XSRF-TOKEN']
+                logger.info("Successfully obtained XSRF token")
             else:
-                logger.error(f"Failed to fetch XSRF token. Status: {response.status_code}, Response: {response.text}")
-                return None, None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error fetching XSRF token: {e}")
-            return None, None
+                logger.error("XSRF token not found in response cookies")
+                return False
 
-    def login(self):
-        """Perform login and retrieve authentication token."""
-        login_url = f"{API_URL}/auth/login"
-        
-        headers = {
-            "X-XSRF-TOKEN": self.xsrf_token,
-            "Content-Type": "application/json"
-        }
+            # Step 2: Perform login to get JWT token
+            headers = {
+                'X-XSRF-TOKEN': self.xsrf_token,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
 
-        payload = json.dumps({
-            "username": USERNAME,
-            "password": PASSWORD,
-            "rememberMe": False
-        })
+            data = {
+                'username': self.username,
+                'password': self.password,
+                'company_id': self.company_id
+            }
 
-        try:
-            response = self.session.post(login_url, headers=headers, data=payload, timeout=5)
-            
-            if response.status_code == 200:
-                auth_response = response.json()
-                auth_token = auth_response.get("access_token")
-                logger.info("Authentication successful")
-                return auth_token
-            else:
-                logger.error(f"Login failed. Status: {response.status_code}, Response: {response.text}")
-                return None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error during login: {e}")
-            return None
-            
-    def send_attendance(self, emp_id, timestamp):
-        """Send live attendance data to external API."""
-        if not self.access_token or not self.xsrf_token:
-            logger.error("Missing authentication tokens. Cannot send attendance data.")
-            return False
-            
-        headers = {
-            "Authorization": f"Bearer {self.access_token}",  
-            "X-XSRF-TOKEN": self.xsrf_token,                
-            "Content-Type": "application/json",
-        }
+            response = self.session.post(
+                f"{self.api_url}/auth/login",
+                json=data,
+                headers=headers
+            )
 
-        data = {
-            "employee_id": emp_id,
-            "timestamp": timestamp
-        }
-        
-        try:
-            response = requests.post(
-                    f"{API_URL}/pay/companies/{COMPANY_ID}/pointings/attendance", 
-                    headers=headers, 
-                    json=data, 
-                    timeout=5
-                )
-            if response.status_code == 200:
-                logger.info(f"Successfully sent attendance for employee {emp_id}")
+            if response.status_code != 200:
+                logger.error(f"Authentication failed: {response.status_code}")
+                logger.debug(f"Response: {response.text}")
+                return False
+
+            # Extract JWT token from response
+            auth_data = response.json()
+            if 'access_token' in auth_data:
+                self.jwt_token = auth_data['access_token']
+                logger.info("Successfully authenticated with API")
                 return True
             else:
-                logger.error(f"Failed to send data for employee {emp_id}. Response: {response.status_code}, {response.text}")
+                logger.error("JWT token not found in authentication response")
                 return False
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error sending data: {e}")
+
+        except Exception as e:
+            logger.error(f"Authentication error: {e}")
             return False
+
+    def get_auth_headers(self):
+        """Get headers with authentication tokens."""
+        if not self.xsrf_token or not self.jwt_token:
+            if not self.authenticate():
+                raise Exception("Authentication required")
+
+        return {
+            'X-XSRF-TOKEN': self.xsrf_token,
+            'Authorization': f"Bearer {self.jwt_token}",
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        }
+
+    def upload_attendance(self, file_path):
+        """Upload attendance data from an Excel file to the API."""
+        if not os.path.exists(file_path):
+            logger.error(f"File not found: {file_path}")
+            return {'success': False, 'message': 'File not found'}
+
+        try:
+            headers = self.get_auth_headers()
+            # Remove Content-Type as it will be set by requests for multipart/form-data
+            headers.pop('Content-Type', None)
+
+            with open(file_path, 'rb') as file:
+                files = {
+                    'file': (os.path.basename(file_path), file,
+                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                }
+
+                data = {
+                    'company_id': self.company_id,
+                    'upload_date': datetime.now().strftime('%Y-%m-%d')
+                }
+
+                response = self.session.post(
+                    f"{self.api_url}/api/attendance/upload",
+                    headers=headers,
+                    data=data,
+                    files=files
+                )
+
+            if response.status_code == 200:
+                return response.json()
+            elif response.status_code == 401:
+                # Token might be expired, try to re-authenticate
+                logger.warning("Authentication token expired, attempting to re-authenticate")
+                if self.authenticate():
+                    # Retry with new token
+                    return self.upload_attendance(file_path)
+                else:
+                    return {'success': False, 'message': 'Re-authentication failed'}
+            else:
+                logger.error(f"API upload failed: {response.status_code}")
+                logger.debug(f"Response: {response.text}")
+                return {'success': False, 'message': f'API Error: {response.text}'}
+
+        except Exception as e:
+            logger.error(f"Error uploading attendance data: {e}")
+            return {'success': False, 'message': str(e)}

@@ -1,0 +1,10 @@
+2025-03-21 17:05:37,660 - src.database.db_manager - INFO - Database initialized successfully
+2025-03-21 17:05:37,660 - attendance_system - INFO - Attendance System initializing
+2025-03-21 17:05:41,222 - src.ui.config_interface - INFO - Default Value: 
+2025-03-21 17:05:41,226 - src.ui.config_interface - INFO - Default Value: 
+2025-03-21 17:05:41,226 - src.ui.config_interface - INFO - Default Value: 
+2025-03-21 17:05:41,226 - src.ui.config_interface - INFO - Default Value: 
+2025-03-21 17:05:41,226 - src.ui.config_interface - INFO - Default Value: 
+2025-03-21 17:05:41,227 - src.ui.config_interface - INFO - Default Value: 
+2025-03-21 17:05:41,227 - src.ui.config_interface - INFO - Default Value: 
+2025-03-21 17:05:41,228 - src.ui.config_interface - INFO - No configuration found in database.
