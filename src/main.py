@@ -131,56 +131,68 @@ class AttendanceSystemApp:
 
     def show_control_interface(self):
         """Show the modernized control interface for managing the collectors."""
-        # Set up the window
+        # Configure window basics
         self.root.title("Attendance System Control Panel")
-        self.root.geometry("750x600")
-        self.root.minsize(500, 400)
+        self.root.geometry("800x600")
+        self.root.minsize(600, 400)
         self.root.resizable(True, True)
 
         style = ttk.Style()
         style.theme_use('clam')
-        style.configure('TButton', font=('Arial', 10), padding=10)
-        style.configure('TLabel', font=('Arial', 10))
-        style.configure('TFrame', background='lightgray')
+        style.configure('TButton', font=('Segoe UI', 10), padding=6)
+        style.configure('TLabel', font=('Segoe UI', 10))
+        style.configure('Header.TLabel', font=('Segoe UI', 14, 'bold'))
+        style.configure('Section.TLabelframe', font=('Segoe UI', 10, 'bold'))
+        style.configure('TFrame', background='#f0f0f0')
 
-        main_frame = ttk.Frame(self.root, padding="20", style='TFrame')
+        main_frame = ttk.Frame(self.root, padding="15", style='TFrame')
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        title_label = ttk.Label(main_frame, text="Attendance System", font=('Arial', 16, 'bold'))
-        title_label.pack(pady=10)
+        # Top Toolbar for quick navigation
+        toolbar = ttk.Frame(main_frame)
+        toolbar.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 15))
+        ttk.Button(toolbar, text="Configure", command=self.open_config).pack(side=tk.LEFT, padx=5)
+        ttk.Button(toolbar, text="Users", command=self.open_list_users).pack(side=tk.LEFT, padx=5)
+        ttk.Button(toolbar, text="Records", command=self.open_list_records).pack(side=tk.LEFT, padx=5)
 
-        status_frame = ttk.Frame(main_frame)
-        status_frame.pack(fill=tk.X, pady=10)
-        ttk.Label(status_frame, text="Status:", font=('Arial', 12, 'bold')).pack(side=tk.LEFT)
+        # Title Label
+        title_label = ttk.Label(main_frame, text="Attendance System", style='Header.TLabel')
+        title_label.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 15))
+
+        # Left Panel: System Controls and Connection Tests
+        controls_frame = ttk.Frame(main_frame)
+        controls_frame.grid(row=2, column=0, sticky="nsew", padx=(0, 10))
+        main_frame.columnconfigure(0, weight=1)
+
+        # System Status & Start/Stop Controls
+        status_controls = ttk.LabelFrame(controls_frame, text="System Controls", style='Section.TLabelframe', padding="10")
+        status_controls.pack(fill=tk.X, pady=(0, 15))
+        status_row = ttk.Frame(status_controls)
+        status_row.pack(fill=tk.X, pady=5)
+        ttk.Label(status_row, text="Status:", font=('Segoe UI', 10, 'bold')).pack(side=tk.LEFT)
         self.status_var = tk.StringVar(value="System stopped")
-        self.status_label = ttk.Label(status_frame, textvariable=self.status_var)
+        self.status_label = ttk.Label(status_row, textvariable=self.status_var)
         self.status_label.pack(side=tk.LEFT, padx=10)
 
-        ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=10)
+        buttons_row = ttk.Frame(status_controls)
+        buttons_row.pack(fill=tk.X, pady=5)
+        self.start_button = ttk.Button(buttons_row, text="Start System", command=self.start_system)
+        self.start_button.pack(side=tk.LEFT, padx=5)
+        self.stop_button = ttk.Button(buttons_row, text="Stop System", command=self.stop_system, state=tk.DISABLED)
+        self.stop_button.pack(side=tk.LEFT, padx=5)
 
-        button_frame = ttk.Frame(main_frame)
-        button_frame.pack(fill=tk.X, pady=10)
-        self.start_button = ttk.Button(button_frame, text="Start System", command=self.start_system)
-        self.start_button.pack(side=tk.LEFT, padx=10)
-        self.stop_button = ttk.Button(button_frame, text="Stop System", command=self.stop_system, state=tk.DISABLED)
-        self.stop_button.pack(side=tk.LEFT, padx=10)
-        ttk.Button(button_frame, text="Configure", command=self.open_config).pack(side=tk.LEFT, padx=10)
-        ttk.Button(button_frame, text="Users", command=self.open_list_users).pack(side=tk.LEFT, padx=10)
-        ttk.Button(button_frame, text="Records", command=self.open_list_records).pack(side=tk.LEFT, padx=10)
+        # Connection Tests Section
+        connection_frame = ttk.LabelFrame(controls_frame, text="Connection Tests", style='Section.TLabelframe', padding="10")
+        connection_frame.pack(fill=tk.X, pady=(0, 15))
+        ttk.Label(connection_frame, textvariable=self.device_test_var).pack(anchor=tk.W, pady=2)
+        ttk.Label(connection_frame, textvariable=self.api_test_var).pack(anchor=tk.W, pady=2)
+        ttk.Button(connection_frame, text="Run Connection Tests", command=self.run_connection_tests).pack(pady=5)
 
-        ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=10)
+        # Right Panel: System Information
+        info_frame = ttk.LabelFrame(main_frame, text="System Information", style='Section.TLabelframe', padding="10")
+        info_frame.grid(row=2, column=1, sticky="nsew")
+        main_frame.columnconfigure(1, weight=1)
 
-        test_frame = ttk.LabelFrame(main_frame, text="Connection Tests", padding="10")
-        test_frame.pack(fill=tk.X, pady=10)
-        device_test_label = ttk.Label(test_frame, textvariable=self.device_test_var)
-        device_test_label.pack(anchor=tk.W, pady=2)
-        api_test_label = ttk.Label(test_frame, textvariable=self.api_test_var)
-        api_test_label.pack(anchor=tk.W, pady=2)
-        ttk.Button(test_frame, text="Run Connection Tests", command=self.run_connection_tests).pack(side=tk.LEFT,
-                                                                                                    padx=10, pady=5)
-
-        info_frame = ttk.LabelFrame(main_frame, text="System Information", padding="10")
-        info_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         self.collector_status_var = tk.StringVar(value="Collector: Stopped")
         self.collector_status_label = ttk.Label(info_frame, textvariable=self.collector_status_var)
         self.collector_status_label.pack(anchor=tk.W, pady=2)
@@ -192,11 +204,11 @@ class AttendanceSystemApp:
         self.last_upload_var = tk.StringVar(value="Last upload: Never")
         ttk.Label(info_frame, textvariable=self.last_upload_var).pack(anchor=tk.W, pady=2)
 
-        # Initial status configuration
+        # Initial status configuration based on configuration existence
         if self.db_manager.get_config():
             self.status_var.set("System ready to start")
             self.status_label.config(foreground='red')
-            # Automatically run connection tests on startup
+            # Automatically run connection tests on startup and start system if tests pass
             if self.run_connection_tests():
                 self.start_system()
         else:
@@ -282,21 +294,21 @@ class AttendanceSystemApp:
         self.stop_button.config(state=tk.DISABLED)
 
     def open_config(self):
-        """Open the configuration window (unchanged logic, ensure styling consistency)."""
+        """Open the configuration window (ensuring styling consistency)."""
         config_interface = ConfigInterface(self.root, self.db_manager)
         orig_show = config_interface.show
         config_interface.show = lambda: None
         orig_show()
 
     def open_list_users(self):
-        """Open the users window (unchanged logic, ensure styling consistency)."""
+        """Open the users window (ensuring styling consistency)."""
         users_interface = UsersInterface(self.root, self.users, self.db_manager)
         orig_show = users_interface.show
         users_interface.show = lambda: None
         orig_show()
 
     def open_list_records(self):
-        """Open the records window (unchanged logic, ensure styling consistency)."""
+        """Open the records window (ensuring styling consistency)."""
         self.collector.collect_attendance(self.users)
         records_interface = RecordsInterface(self.root, self.users, self.db_manager)
         orig_show = records_interface.show
@@ -304,13 +316,13 @@ class AttendanceSystemApp:
         orig_show()
 
     def on_close(self):
-        """Handle window closing (unchanged)."""
+        """Handle window closing."""
         if messagebox.askokcancel("Quit", "Do you want to quit? This will stop the attendance collection."):
             self.stop_collectors()
             self.root.destroy()
 
     def run_cmd(self):
-        """Run the application in command line mode (unchanged)."""
+        """Run the application in command line mode."""
         parser = argparse.ArgumentParser(description='Attendance System')
         parser.add_argument('--config', action='store_true', help='Show configuration interface')
         parser.add_argument('--start', action='store_true', help='Start the collectors')
