@@ -9,25 +9,25 @@ from src.device.attendance_processor import AttendanceProcessor
 logger = logging.getLogger(__name__)
 
 
-class UserInterface:
-    def __init__(self, root: Optional[tk.Tk], db_manager: Optional[DatabaseManager] = None):
+class UsersInterface:
+    def __init__(self, root: Optional[tk.Tk], users = None, db_manager: Optional[DatabaseManager] = None):
         self.db_manager = db_manager or DatabaseManager()
         self.processor = None
         self.root = tk.Toplevel(root)
+        self.users = users
 
         self.root.title("User List")
         self.root.geometry("800x600")
         self.root.resizable(True, True)
 
         self.status_var = tk.StringVar()
-        self.new_users = None
-        self.users = None
 
         # Create main layout frame
         self.main_frame = ttk.Frame(self.root, padding="20")
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.load_users()
+        if not self.users:
+            self.load_users()
         self.display_list()
 
     def show(self):

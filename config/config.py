@@ -5,6 +5,9 @@ COMPANY_ID = 212
 USERNAME = "sara.yaici@tech-instinct.com"
 PASSWORD = "!chefdeprojet#moa#BA2024!"
 
+DEV_IP = "157.173.97.199"
+DEV_PAY_EXTERNAL = "172.18.0.12"
+
 # API details
 API_URL = "https://app-dev.rh-partner.com"
 

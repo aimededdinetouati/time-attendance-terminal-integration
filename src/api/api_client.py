@@ -1,7 +1,8 @@
 import requests
 import logging
 import os
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,13 @@ class APIClient:
 
             # Extract JWT token from response
             auth_data = response.json()
+
+            logger.debug(f"Token before login: {self.xsrf_token}")
+            # After login, update token
+            if 'XSRF-TOKEN' in self.session.cookies:
+                self.xsrf_token = self.session.cookies['XSRF-TOKEN']
+            logger.debug(f"Token after login: {self.xsrf_token}")
+
             if 'access_token' in auth_data:
                 self.jwt_token = auth_data['access_token']
                 logger.info("Successfully authenticated with API")
@@ -74,9 +82,8 @@ class APIClient:
 
     def get_auth_headers(self):
         """Get headers with authentication tokens."""
-        if not self.xsrf_token or not self.jwt_token:
-            if not self.authenticate():
-                raise Exception("Authentication required")
+        if not self.authenticate():
+            raise Exception("Authentication required")
 
         return {
             'X-XSRF-TOKEN': self.xsrf_token,
@@ -84,6 +91,63 @@ class APIClient:
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
+
+    def get_pointing_import(self):
+        headers = self.get_auth_headers()
+
+
+        response = self.session.get(
+            f"{self.api_url}/pay/api/companies/{self.company_id}/pointing-imports",
+            headers=headers
+        )
+        if response.status_code == 200:
+            data = response.json()
+            print("Pointing import data retrieved successfully.")
+            return {
+                "id": data.get("id"),
+                "status": data.get("status"),
+                "companyId": data.get("companyId"),
+                "jobExecutionId": data.get("jobExecutionId"),
+                "total": data.get("total"),
+                "skipped": data.get("skipped"),
+                "written": data.get("written"),
+                "filename": data.get("filename"),
+                "created": data.get("created")
+            }
+        else:
+            print(f"Failed to retrieve pointing import data. Status code: {response.status_code}")
+            response.raise_for_status()  # Raise an exception for other error status codes
+
+        print("Timeout reached: No content was retrieved within 30 seconds.")
+        raise Exception("Timeout reached: No content was retrieved within 30 seconds.")
+
+    def get_pointings_with_job_id(self, job_execution_id):
+        """Fetch pointings with filters, including jobExecutionId."""
+        headers = self.get_auth_headers()
+
+        # Build query parameters
+        params = {
+            'jobExecutionId': job_execution_id,
+        }
+
+        try:
+            response = self.session.get(
+                f"{self.api_url}/pay/api/companies/{self.company_id}/pointings",
+                headers=headers,
+                params=params
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                print("Pointings data retrieved successfully.")
+                return self.transform_data(data)  # Returns the list of PointingDTO
+            else:
+                print(f"Failed to retrieve pointings. Status code: {response.status_code}")
+                response.raise_for_status()
+
+        except Exception as e:
+            print(f"Error fetching pointings: {e}")
+            raise
 
     def upload_attendance(self, file_path):
         """Upload attendance data from an Excel file to the API."""
@@ -102,20 +166,19 @@ class APIClient:
                              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 }
 
-                data = {
-                    'company_id': self.company_id,
-                    'upload_date': datetime.now().strftime('%Y-%m-%d')
-                }
-
+                month = datetime.now().strftime("%Y-%m")
                 response = self.session.post(
-                    f"{self.api_url}/api/attendance/upload",
+                    f"{self.api_url}/pay/api/companies/{self.company_id}/month-pointing/{month}/import",
                     headers=headers,
-                    data=data,
                     files=files
                 )
 
             if response.status_code == 200:
-                return response.json()
+                # os.remove(file_path)
+                response_data = response.json()
+                job_execution_id = response_data.get("jobExecutionId")
+                logger.info(f"Job execution started with ID: {job_execution_id}")
+                return {'success': True, 'jobExecutionId': job_execution_id}
             elif response.status_code == 401:
                 # Token might be expired, try to re-authenticate
                 logger.warning("Authentication token expired, attempting to re-authenticate")
@@ -132,3 +195,14 @@ class APIClient:
         except Exception as e:
             logger.error(f"Error uploading attendance data: {e}")
             return {'success': False, 'message': str(e)}
+
+    def transform_data(self, pointings):
+        result = []
+
+        # Iterate through each pointing and extract the entrance and exit timestamps
+        for pointing in pointings:
+            if pointing.get("entrance"):
+                result.append(pointing.get("entrance"))
+            if pointing.get("exit"):
+                result.append(pointing.get("exit"))
+        return result

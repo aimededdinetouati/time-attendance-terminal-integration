@@ -45,10 +45,10 @@ class DatabaseManager:
         CREATE TABLE IF NOT EXISTS attendance_records (
             id INTEGER PRIMARY KEY,
             user_id INTEGER NOT NULL,
-            timestamp TEXT NOT NULL,
+            username TEXT,  
+            timestamp TEXT NOT NULL UNIQUE,
             status INTEGER NOT NULL,
             punch_type INTEGER NOT NULL,
-            processed BOOLEAN DEFAULT FALSE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         ''')
@@ -126,58 +126,60 @@ class DatabaseManager:
             return
 
         conn = self.get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        for record in records:
-            record = AttendanceRecord.from_dict(record)
-            cursor.execute('''
-            INSERT INTO attendance_records (
-                user_id, timestamp, status, punch_type
-            ) VALUES (?, ?, ?, ?)
-            ''', (
-                record.user_id, record.timestamp, record.status, record.punch_type
-            ))
 
-        conn.commit()
-        conn.close()
-        logger.info(f"Saved {len(records)} attendance records to database")
+            # TODO this tries to insert all the records found in the device even the old ones, find a better solution
+            for record in records:
+                record = AttendanceRecord.from_dict(record)
+                cursor.execute('''
+                    INSERT OR IGNORE INTO attendance_records (
+                        user_id, username, timestamp, status, punch_type
+                    ) VALUES (?, ?, ?, ?, ?)
+                ''', (record.user_id, record.username, record.timestamp, record.status, record.punch_type))
 
-    def get_unprocessed_attendance_records(self):
+            conn.commit()
+            logger.info(f"Saved {len(records)} attendance records to database")
+        finally:
+            conn.close()
+
+    def get_attendance_records(self):
         """Retrieve unprocessed attendance records as a list of AttendanceRecord objects."""
         conn = self.get_connection()
         cursor = conn.cursor()
 
         cursor.execute('''
-        SELECT * FROM attendance_records WHERE processed = FALSE ORDER BY timestamp ASC
+        SELECT * FROM attendance_records ORDER BY timestamp ASC
         ''')
         rows = cursor.fetchall()
         conn.close()
 
         return [
             AttendanceRecord(
-                user_id=row['user_id'], timestamp=row['timestamp'],
-                status=row['status'], punch_type=row['punch_type'],
-                processed=row['processed']
+                user_id=row['user_id'], username=row['username'], timestamp=row['timestamp'],
+                status=row['status'], punch_type=row['punch_type']
             )
             for row in rows
         ]
 
-    def mark_records_as_processed(self, record_ids):
+    def delete_processed_records(self, attendance_records):
         """Mark attendance records as processed."""
-        if not record_ids:
+        if not attendance_records:
             return
 
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        placeholders = ','.join(['?'] * len(record_ids))
+        placeholders = ','.join(['?'] * len(attendance_records))
+        formatted_records = [ts.replace("T", " ") for ts in attendance_records]
         cursor.execute(f'''
-        UPDATE attendance_records SET processed = TRUE WHERE id IN ({placeholders})
-        ''', record_ids)
+            DELETE FROM attendance_records WHERE timestamp IN ({placeholders})
+        ''', formatted_records)
 
         conn.commit()
         conn.close()
-        logger.info(f"Marked {len(record_ids)} records as processed")
+        logger.info(f"deleted {len(attendance_records)}")
 
     def log_api_upload(self, log):
         """Log an API upload using an ApiUploadLog object."""

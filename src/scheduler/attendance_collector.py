@@ -30,7 +30,7 @@ class AttendanceCollector:
 
         return self.processor.connect()
 
-    def collect_attendance(self):
+    def collect_attendance(self, users):
         """Collect attendance data and save to database."""
         if not self.processor:
             if not self.initialize():
@@ -38,22 +38,22 @@ class AttendanceCollector:
                 return
 
         logger.info("Collecting attendance data...")
-        attendance_records = self.processor.get_attendance()
+        attendance_records = self.processor.get_attendance(users)
 
-        if attendance_records:
+        if attendance_records and len(attendance_records) > 0:
             self.db_manager.save_attendance_records(attendance_records)
             logger.info(f"Collected and saved {len(attendance_records)} attendance records")
         else:
             logger.info("No new attendance records to collect")
 
-    def start_scheduler(self, interval_minutes=60):
+    def start_scheduler(self, users, interval_minutes=60):
         """Start the attendance collection scheduler."""
         if self.running:
             logger.warning("Scheduler is already running")
             return
 
         # First run immediately
-        self.collect_attendance()
+        self.collect_attendance(users)
 
         # Schedule regular runs
         schedule.every(interval_minutes).minutes.do(self.collect_attendance)
@@ -69,8 +69,5 @@ class AttendanceCollector:
         """Stop the attendance collection scheduler."""
         self.running = False
         schedule.clear()
-
-        if self.processor:
-            self.processor.disconnect()
 
         logger.info("Attendance collector scheduler stopped")

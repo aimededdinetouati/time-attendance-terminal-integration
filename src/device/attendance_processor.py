@@ -46,7 +46,7 @@ class AttendanceProcessor:
             return []
 
 
-    def get_attendance(self):
+    def get_attendance(self, users):
         """Get attendance records from the device."""
         if not self.conn:
             logger.error("Not connected to ZK device")
@@ -56,10 +56,14 @@ class AttendanceProcessor:
             attendance = self.conn.get_attendance()
             processed_records = []
 
+            users_map = {user.user_id: user.name for user in users} if users else {}
+
             for record in attendance:
+                username = users_map[record.user_id]
                 # Parse attendance data
                 processed_record = {
                     'user_id': record.user_id,
+                    'username': username,
                     'timestamp': record.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
                     'status': record.status,
                     'punch_type': record.punch

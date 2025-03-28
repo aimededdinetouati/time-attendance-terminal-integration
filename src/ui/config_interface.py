@@ -230,10 +230,10 @@ class ConfigInterface:
                 )
                 return
 
-            attendance_records = processor.get_attendance() or []
-            count = len(attendance_records)
+            users = processor.get_users() or []
+            count = len(users)
             processor.disconnect()
-            self.show_success(f"Device connected. Found {count} attendance records.")
+            self.show_success(f"Device connected. Found {count} users.")
 
         except Exception as e:
             self.handle_error("Error testing device connection", e)

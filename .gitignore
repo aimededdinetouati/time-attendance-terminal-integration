@@ -11,6 +11,13 @@ env/
 # Log files
 logs/*.log
 
+# .xlsx files
+exports/*.xlsx
+
+# db
+data/*.db
+src/data/*.db
+
 # Distribution / packaging
 dist/
 build/
