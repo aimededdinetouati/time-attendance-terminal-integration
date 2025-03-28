@@ -139,42 +139,44 @@ class AttendanceSystemApp:
 
         style = ttk.Style()
         style.theme_use('clam')
-        style.configure('TButton', font=('Segoe UI', 10), padding=6)
-        style.configure('TLabel', font=('Segoe UI', 10))
+
+        # Define a new main background color
+        main_bg_color = '#d9d9d9'
+
+        # Set styles with the new background color
+        style.configure('TFrame', background=main_bg_color)
+        style.configure('TLabel', background=main_bg_color, font=('Segoe UI', 10))
         style.configure('Header.TLabel', font=('Segoe UI', 14, 'bold'))
-        style.configure('Section.TLabelframe', font=('Segoe UI', 10, 'bold'))
-        style.configure('TFrame', background='#f0f0f0')
+        style.configure('Section.TLabelframe', font=('Segoe UI', 10, 'bold'), background=main_bg_color)
+        style.configure('TLabelframe.Label', background=main_bg_color)
+        style.configure('TButton', font=('Segoe UI', 10), padding=6)
 
         main_frame = ttk.Frame(self.root, padding="15", style='TFrame')
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Top Toolbar for quick navigation
-        toolbar = ttk.Frame(main_frame)
-        toolbar.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 15))
-        ttk.Button(toolbar, text="Configure", command=self.open_config).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Users", command=self.open_list_users).pack(side=tk.LEFT, padx=5)
-        ttk.Button(toolbar, text="Records", command=self.open_list_records).pack(side=tk.LEFT, padx=5)
-
-        # Title Label
+        # Title Label at the top
         title_label = ttk.Label(main_frame, text="Attendance System", style='Header.TLabel')
-        title_label.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 15))
+        title_label.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 15))
 
         # Left Panel: System Controls and Connection Tests
-        controls_frame = ttk.Frame(main_frame)
-        controls_frame.grid(row=2, column=0, sticky="nsew", padx=(0, 10))
+        controls_frame = ttk.Frame(main_frame, style='TFrame')
+        controls_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 10))
         main_frame.columnconfigure(0, weight=1)
 
         # System Status & Start/Stop Controls
-        status_controls = ttk.LabelFrame(controls_frame, text="System Controls", style='Section.TLabelframe', padding="10")
+        status_controls = ttk.LabelFrame(controls_frame, text="System Controls", style='Section.TLabelframe',
+                                         padding="10")
         status_controls.pack(fill=tk.X, pady=(0, 15))
-        status_row = ttk.Frame(status_controls)
+
+        status_row = ttk.Frame(status_controls, style='TFrame')
         status_row.pack(fill=tk.X, pady=5)
-        ttk.Label(status_row, text="Status:", font=('Segoe UI', 10, 'bold')).pack(side=tk.LEFT)
+        ttk.Label(status_row, text="Status:", font=('Segoe UI', 10, 'bold'), background=main_bg_color).pack(
+            side=tk.LEFT)
         self.status_var = tk.StringVar(value="System stopped")
-        self.status_label = ttk.Label(status_row, textvariable=self.status_var)
+        self.status_label = ttk.Label(status_row, textvariable=self.status_var, style='TLabel')
         self.status_label.pack(side=tk.LEFT, padx=10)
 
-        buttons_row = ttk.Frame(status_controls)
+        buttons_row = ttk.Frame(status_controls, style='TFrame')
         buttons_row.pack(fill=tk.X, pady=5)
         self.start_button = ttk.Button(buttons_row, text="Start System", command=self.start_system)
         self.start_button.pack(side=tk.LEFT, padx=5)
@@ -182,27 +184,36 @@ class AttendanceSystemApp:
         self.stop_button.pack(side=tk.LEFT, padx=5)
 
         # Connection Tests Section
-        connection_frame = ttk.LabelFrame(controls_frame, text="Connection Tests", style='Section.TLabelframe', padding="10")
+        connection_frame = ttk.LabelFrame(controls_frame, text="Connection Tests", style='Section.TLabelframe',
+                                          padding="10")
         connection_frame.pack(fill=tk.X, pady=(0, 15))
-        ttk.Label(connection_frame, textvariable=self.device_test_var).pack(anchor=tk.W, pady=2)
-        ttk.Label(connection_frame, textvariable=self.api_test_var).pack(anchor=tk.W, pady=2)
+        ttk.Label(connection_frame, textvariable=self.device_test_var, background=main_bg_color).pack(anchor=tk.W,
+                                                                                                      pady=2)
+        ttk.Label(connection_frame, textvariable=self.api_test_var, background=main_bg_color).pack(anchor=tk.W, pady=2)
         ttk.Button(connection_frame, text="Run Connection Tests", command=self.run_connection_tests).pack(pady=5)
 
         # Right Panel: System Information
         info_frame = ttk.LabelFrame(main_frame, text="System Information", style='Section.TLabelframe', padding="10")
-        info_frame.grid(row=2, column=1, sticky="nsew")
+        info_frame.grid(row=1, column=1, sticky="nsew")
         main_frame.columnconfigure(1, weight=1)
 
         self.collector_status_var = tk.StringVar(value="Collector: Stopped")
-        self.collector_status_label = ttk.Label(info_frame, textvariable=self.collector_status_var)
+        self.collector_status_label = ttk.Label(info_frame, textvariable=self.collector_status_var, style='TLabel')
         self.collector_status_label.pack(anchor=tk.W, pady=2)
         self.uploader_status_var = tk.StringVar(value="Uploader: Stopped")
-        self.uploader_status_label = ttk.Label(info_frame, textvariable=self.uploader_status_var)
+        self.uploader_status_label = ttk.Label(info_frame, textvariable=self.uploader_status_var, style='TLabel')
         self.uploader_status_label.pack(anchor=tk.W, pady=2)
         self.last_collection_var = tk.StringVar(value="Last collection: Never")
-        ttk.Label(info_frame, textvariable=self.last_collection_var).pack(anchor=tk.W, pady=2)
+        ttk.Label(info_frame, textvariable=self.last_collection_var, style='TLabel').pack(anchor=tk.W, pady=2)
         self.last_upload_var = tk.StringVar(value="Last upload: Never")
-        ttk.Label(info_frame, textvariable=self.last_upload_var).pack(anchor=tk.W, pady=2)
+        ttk.Label(info_frame, textvariable=self.last_upload_var, style='TLabel').pack(anchor=tk.W, pady=2)
+
+        # Bottom Toolbar with Configure, Users, and Records buttons
+        bottom_toolbar = ttk.Frame(main_frame, style='TFrame')
+        bottom_toolbar.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(15, 0))
+        ttk.Button(bottom_toolbar, text="Configure", command=self.open_config).pack(side=tk.LEFT, padx=5)
+        ttk.Button(bottom_toolbar, text="Users", command=self.open_list_users).pack(side=tk.LEFT, padx=5)
+        ttk.Button(bottom_toolbar, text="Records", command=self.open_list_records).pack(side=tk.LEFT, padx=5)
 
         # Initial status configuration based on configuration existence
         if self.db_manager.get_config():
