@@ -307,7 +307,7 @@ class AttendanceSystemApp:
     def open_list_records(self):
         """Open the records window (unchanged logic, ensure styling consistency)."""
         self.collector.collect_attendance(self.users)
-        records_interface = RecordsInterface(self.root, self.db_manager)
+        records_interface = RecordsInterface(self.root, self.users, self.db_manager)
         orig_show = records_interface.show
         records_interface.show = lambda: None
         orig_show()

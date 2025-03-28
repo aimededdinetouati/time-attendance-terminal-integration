@@ -44,6 +44,7 @@ class DatabaseManager:
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS attendance_records (
             id INTEGER PRIMARY KEY,
+            uid INTEGER NOT NULL UNIQUE DEFAULT 2000000,
             user_id INTEGER NOT NULL,
             username TEXT,  
             timestamp TEXT NOT NULL UNIQUE,
@@ -129,16 +130,13 @@ class DatabaseManager:
         conn = self.get_connection()
         try:
             cursor = conn.cursor()
-
-
             # TODO this tries to insert all the records found in the device even the old ones, find a better solution
             for record in records:
-                record = AttendanceRecord.from_dict(record)
                 cursor.execute('''
                     INSERT OR IGNORE INTO attendance_records (
-                        user_id, username, timestamp, status, punch_type
-                    ) VALUES (?, ?, ?, ?, ?)
-                ''', (record.user_id, record.username, record.timestamp, record.status, record.punch_type))
+                        uid, user_id, username, timestamp, status, punch_type
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                ''', (record.uid, record.user_id, record.username, record.timestamp, record.status, record.punch_type))
 
             conn.commit()
             logger.info(f"Saved {len(records)} attendance records to database")
@@ -152,11 +150,15 @@ class DatabaseManager:
         try:
             cursor = conn.cursor()
             record = AttendanceRecord.from_dict(record)
+
+            cursor.execute('SELECT MAX(uid) FROM attendance_records')
+            max_uid = cursor.fetchone()[0]
+            max_uid = max_uid + 1 if max_uid > 2000000 else 2000000
             cursor.execute('''
                 INSERT INTO attendance_records (
-                    user_id, username, timestamp, status, punch_type, processed
-                ) VALUES (?, ?, ?, ?, ?, ?)
-            ''', (record.user_id, record.username, record.timestamp, record.status, record.punch_type, record.processed))
+                    uid, user_id, username, timestamp, status, punch_type, processed
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (max_uid, record.user_id, record.username, record.timestamp, record.status, record.punch_type, record.processed))
 
             conn.commit()
             logger.info(f"Saved attendance record with id {record.id} to database")
@@ -172,10 +174,10 @@ class DatabaseManager:
         try:
             cursor = conn.cursor()
             query = '''
-                DELETE FROM attendance_record
+                DELETE FROM attendance_records
                 WHERE id = ?
             '''
-            cursor.execute(query, attendance_record.id)
+            cursor.execute(query, (attendance_record.id,))
             conn.commit()
             logger.info(
                 f"Deleted attendance record for id {attendance_record.id}")
@@ -222,7 +224,7 @@ class DatabaseManager:
         query = f'''
                 SELECT * FROM attendance_records 
                 WHERE processed = ?
-                ORDER BY {order_by} ASC
+                ORDER BY timestamp, {order_by} ASC
             '''
 
         cursor.execute(query, (processed,))
@@ -232,6 +234,7 @@ class DatabaseManager:
 
         return [
             AttendanceRecord(
+                id=row['id'],
                 user_id=row['user_id'], username=row['username'], timestamp=row['timestamp'],
                 status=row['status'], punch_type=row['punch_type'], processed=row['processed']
             )
