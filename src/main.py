@@ -66,7 +66,8 @@ class AttendanceSystemApp:
         self.logger.info("Attendance System initializing")
 
     def run_connection_tests(self):
-        """Run device and API connection tests."""
+        """Run device and API connection tests and return True if both pass."""
+        success = True
         try:
             # Get configuration
             self.config = self.db_manager.get_config()
@@ -74,7 +75,7 @@ class AttendanceSystemApp:
                 self.logger.error("No configuration found. Skipping connection tests.")
                 self.device_test_var.set("Device: Test Skipped (No Config)")
                 self.api_test_var.set("API: Test Skipped (No Config)")
-                return
+                return False
 
             # Test device connection
             try:
@@ -93,9 +94,11 @@ class AttendanceSystemApp:
                 else:
                     self.device_test_var.set("Device: Connection Failed")
                     self.logger.warning("Device connection test failed.")
+                    success = False
             except Exception as e:
                 self.device_test_var.set("Device: Test Error")
                 self.logger.error(f"Device connection test error: {e}")
+                success = False
 
             # Test API connection
             try:
@@ -112,39 +115,40 @@ class AttendanceSystemApp:
                 else:
                     self.api_test_var.set("API: Authentication Failed")
                     self.logger.warning("API authentication test failed.")
+                    success = False
             except Exception as e:
                 self.api_test_var.set("API: Test Error")
                 self.logger.error(f"API connection test error: {e}")
+                success = False
 
         except Exception as e:
             self.logger.error(f"Unexpected error in connection tests: {e}")
             self.device_test_var.set("Device: Test Error")
             self.api_test_var.set("API: Test Error")
+            success = False
+
+        return success
 
     def show_control_interface(self):
         """Show the modernized control interface for managing the collectors."""
         # Set up the window
         self.root.title("Attendance System Control Panel")
-        self.root.geometry("750x600")  # Increased height to accommodate new test section
-        self.root.minsize(500, 400)  # Adjusted minimum size
+        self.root.geometry("750x600")
+        self.root.minsize(500, 400)
         self.root.resizable(True, True)
 
-        # Apply a modern theme and styles
         style = ttk.Style()
-        style.theme_use('clam')  # Modern, flat design
+        style.theme_use('clam')
         style.configure('TButton', font=('Arial', 10), padding=10)
         style.configure('TLabel', font=('Arial', 10))
         style.configure('TFrame', background='lightgray')
 
-        # Main frame with padding
         main_frame = ttk.Frame(self.root, padding="20", style='TFrame')
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Title for a dashboard-like feel
         title_label = ttk.Label(main_frame, text="Attendance System", font=('Arial', 16, 'bold'))
         title_label.pack(pady=10)
 
-        # Status section
         status_frame = ttk.Frame(main_frame)
         status_frame.pack(fill=tk.X, pady=10)
         ttk.Label(status_frame, text="Status:", font=('Arial', 12, 'bold')).pack(side=tk.LEFT)
@@ -152,10 +156,8 @@ class AttendanceSystemApp:
         self.status_label = ttk.Label(status_frame, textvariable=self.status_var)
         self.status_label.pack(side=tk.LEFT, padx=10)
 
-        # Separator for visual separation
         ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=10)
 
-        # Control buttons
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, pady=10)
         self.start_button = ttk.Button(button_frame, text="Start System", command=self.start_system)
@@ -166,24 +168,17 @@ class AttendanceSystemApp:
         ttk.Button(button_frame, text="Users", command=self.open_list_users).pack(side=tk.LEFT, padx=10)
         ttk.Button(button_frame, text="Records", command=self.open_list_records).pack(side=tk.LEFT, padx=10)
 
-        # Another separator
         ttk.Separator(main_frame, orient='horizontal').pack(fill='x', pady=10)
 
-        # Connection Test Section
         test_frame = ttk.LabelFrame(main_frame, text="Connection Tests", padding="10")
         test_frame.pack(fill=tk.X, pady=10)
-
         device_test_label = ttk.Label(test_frame, textvariable=self.device_test_var)
         device_test_label.pack(anchor=tk.W, pady=2)
-
         api_test_label = ttk.Label(test_frame, textvariable=self.api_test_var)
         api_test_label.pack(anchor=tk.W, pady=2)
-
-        # Run tests button
         ttk.Button(test_frame, text="Run Connection Tests", command=self.run_connection_tests).pack(side=tk.LEFT,
                                                                                                     padx=10, pady=5)
 
-        # System info section
         info_frame = ttk.LabelFrame(main_frame, text="System Information", padding="10")
         info_frame.pack(fill=tk.BOTH, expand=True, pady=10)
         self.collector_status_var = tk.StringVar(value="Collector: Stopped")
@@ -200,24 +195,20 @@ class AttendanceSystemApp:
         # Initial status configuration
         if self.db_manager.get_config():
             self.status_var.set("System ready to start")
-            self.status_label.config(foreground='red')  # Not running
+            self.status_label.config(foreground='red')
             # Automatically run connection tests on startup
-            self.run_connection_tests()
+            if self.run_connection_tests():
+                self.start_system()
         else:
             self.status_var.set("System not configured")
-            self.status_label.config(foreground='red')  # Not configured
+            self.status_label.config(foreground='red')
             self.start_button.config(state=tk.DISABLED)
 
-        self.collector_status_label.config(foreground='red')  # Stopped
-        self.uploader_status_label.config(foreground='red')  # Stopped
-
-        # Set up clean exit
+        self.collector_status_label.config(foreground='red')
+        self.uploader_status_label.config(foreground='red')
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
-
-        # Start UI
         self.root.deiconify()
         self.root.mainloop()
-
 
     def show_config_interface(self):
         """Show the configuration interface."""
