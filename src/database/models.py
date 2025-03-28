@@ -93,6 +93,7 @@ class AttendanceRecord:
     timestamp: str = ""
     status: int = 0
     punch_type: int = 0
+    processed: bool = False
     created_at: Optional[datetime] = None
 
     @classmethod
@@ -108,6 +109,7 @@ class AttendanceRecord:
             timestamp=data.get('timestamp', ''),
             status=data.get('status', 0),
             punch_type=data.get('punch_type', 0),
+            processed=data.get('processed', False),
             created_at=datetime.fromisoformat(data.get('created_at')) if data.get('created_at') else None
         )
 
@@ -120,6 +122,7 @@ class AttendanceRecord:
             'timestamp': self.timestamp,
             'status': self.status,
             'punch_type': self.punch_type,
+            'processed': self.processed,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
@@ -146,7 +149,8 @@ class AttendanceRecord:
                 username='',
                 timestamp=timestamp_part,
                 status=status,
-                punch_type=punch_type
+                punch_type=punch_type,
+                processed = False
             )
         except Exception as e:
             # If parsing fails, return None

@@ -84,7 +84,8 @@ class RecordsInterface:
             no_record_label.pack(pady=20)
         else:
             # Create a Treeview widget to display records in a table.
-            columns = ("user_id", "timestamp", "status", "punch_type")
+            # Added new column "processed"
+            columns = ("user_id", "timestamp", "status", "punch_type", "processed")
             tree = ttk.Treeview(self.main_frame, columns=columns, show="headings", selectmode="browse")
 
             # Define headings for each column.
@@ -92,12 +93,14 @@ class RecordsInterface:
             tree.heading("timestamp", text="Timestamp")
             tree.heading("status", text="Status")
             tree.heading("punch_type", text="Punch Type")
+            tree.heading("processed", text="Processed")
 
             # Set the width for each column.
             tree.column("user_id", width=100, anchor=tk.CENTER)
             tree.column("timestamp", width=200, anchor=tk.CENTER)
             tree.column("status", width=100, anchor=tk.CENTER)
             tree.column("punch_type", width=100, anchor=tk.CENTER)
+            tree.column("processed", width=100, anchor=tk.CENTER)
 
             # Insert each AttendanceRecord instance into the Treeview.
             for record in self.records:
@@ -105,8 +108,9 @@ class RecordsInterface:
                 timestamp = record.timestamp if record.timestamp else "N/A"
                 status = record.status
                 punch_type = record.punch_type
+                processed = "Yes" if record.processed else "No"  # New column based on processed boolean
 
-                tree.insert("", tk.END, values=(user_id, timestamp, status, punch_type))
+                tree.insert("", tk.END, values=(user_id, timestamp, status, punch_type, processed))
 
             # Add a vertical scrollbar for the Treeview.
             scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=tree.yview)

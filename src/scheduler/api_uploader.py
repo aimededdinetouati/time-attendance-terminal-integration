@@ -111,7 +111,7 @@ class APIUploader:
                         job_execution_id = pointing_import['jobExecutionId']
                         attendance_records = self.api_client.get_pointings_with_job_id(job_execution_id)
                         if len(attendance_records) > 0:
-                            self.db_manager.delete_processed_records(attendance_records)
+                            self.db_manager.mark_records_processed(attendance_records)
                         return
                     elif import_status == "STARTED" or import_status == "STARTING":
                         logger.warning("The import pointing request didn't complete yet")

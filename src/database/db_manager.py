@@ -49,6 +49,7 @@ class DatabaseManager:
             timestamp TEXT NOT NULL UNIQUE,
             status INTEGER NOT NULL,
             punch_type INTEGER NOT NULL,
+            processed BOOLEAN NOT NULL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         ''')
@@ -144,42 +145,48 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    def get_attendance_records(self):
+    def get_attendance_records(self, processed = '0'):
         """Retrieve unprocessed attendance records as a list of AttendanceRecord objects."""
         conn = self.get_connection()
         cursor = conn.cursor()
 
         cursor.execute('''
-        SELECT * FROM attendance_records ORDER BY timestamp ASC
-        ''')
+            SELECT * FROM attendance_records 
+            WHERE processed = ?
+            ORDER BY username ASC
+        ''', processed)
+
         rows = cursor.fetchall()
         conn.close()
 
         return [
             AttendanceRecord(
                 user_id=row['user_id'], username=row['username'], timestamp=row['timestamp'],
-                status=row['status'], punch_type=row['punch_type']
+                status=row['status'], punch_type=row['punch_type'], processed=row['processed']
             )
             for row in rows
         ]
 
-    def delete_processed_records(self, attendance_records):
-        """Mark attendance records as processed."""
-        if not attendance_records:
+    def mark_records_processed(self, timestamps):
+        """Mark attendance records as processed using their timestamps."""
+        if not timestamps:
             return
 
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        placeholders = ','.join(['?'] * len(attendance_records))
-        formatted_records = [ts.replace("T", " ") for ts in attendance_records]
+        placeholders = ','.join(['?'] * len(timestamps))
+        formatted_timestamps = [ts.replace("T", " ") for ts in timestamps]
+
         cursor.execute(f'''
-            DELETE FROM attendance_records WHERE timestamp IN ({placeholders})
-        ''', formatted_records)
+            UPDATE attendance_records 
+            SET processed = 1 
+            WHERE timestamp IN ({placeholders})
+        ''', formatted_timestamps)
 
         conn.commit()
         conn.close()
-        logger.info(f"deleted {len(attendance_records)}")
+        logger.info(f"Marked {len(timestamps)} records as processed")
 
     def log_api_upload(self, log):
         """Log an API upload using an ApiUploadLog object."""
