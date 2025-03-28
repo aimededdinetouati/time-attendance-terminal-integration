@@ -88,6 +88,7 @@ class User:
 class AttendanceRecord:
     """Model for attendance records from the device."""
     id: Optional[int] = None
+    uid: Optional[int] = None
     user_id: int = 0
     username: str = ""
     timestamp: str = ""
@@ -104,6 +105,7 @@ class AttendanceRecord:
 
         return cls(
             id=data.get('id'),
+            uid = data.get('uid'),
             user_id=data.get('user_id', 0),
             username=data.get('username', ''),
             timestamp=data.get('timestamp', ''),
@@ -117,6 +119,7 @@ class AttendanceRecord:
         """Convert AttendanceRecord object to dictionary."""
         return {
             'id': self.id,
+            'uid': self.uid,
             'user_id': self.user_id,
             'username': self.username,
             'timestamp': self.timestamp,

@@ -44,6 +44,7 @@ class DatabaseManager:
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS attendance_records (
             id INTEGER PRIMARY KEY,
+            uid INTEGER NOT NULL UNIQUE DEFAULT 2000000,
             user_id INTEGER NOT NULL,
             username TEXT,  
             timestamp TEXT NOT NULL UNIQUE,
@@ -129,38 +130,111 @@ class DatabaseManager:
         conn = self.get_connection()
         try:
             cursor = conn.cursor()
-
-
             # TODO this tries to insert all the records found in the device even the old ones, find a better solution
             for record in records:
-                record = AttendanceRecord.from_dict(record)
                 cursor.execute('''
                     INSERT OR IGNORE INTO attendance_records (
-                        user_id, username, timestamp, status, punch_type
-                    ) VALUES (?, ?, ?, ?, ?)
-                ''', (record.user_id, record.username, record.timestamp, record.status, record.punch_type))
+                        uid, user_id, username, timestamp, status, punch_type
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                ''', (record.uid, record.user_id, record.username, record.timestamp, record.status, record.punch_type))
 
             conn.commit()
             logger.info(f"Saved {len(records)} attendance records to database")
         finally:
             conn.close()
 
-    def get_attendance_records(self, processed = '0'):
+    def save_attendance_record(self, record):
+        """Save a signle AttendanceRecord."""
+
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            record = AttendanceRecord.from_dict(record)
+
+            cursor.execute('SELECT MAX(uid) FROM attendance_records')
+            max_uid = cursor.fetchone()[0]
+            max_uid = max_uid + 1 if max_uid > 2000000 else 2000000
+            cursor.execute('''
+                INSERT INTO attendance_records (
+                    uid, user_id, username, timestamp, status, punch_type, processed
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (max_uid, record.user_id, record.username, record.timestamp, record.status, record.punch_type, record.processed))
+
+            conn.commit()
+            logger.info(f"Saved attendance record with id {record.id} to database")
+        finally:
+            conn.close()
+
+
+    def delete_attendance_record(self, attendance_record):
+        """
+        Delete a single AttendanceRecord in the database.
+        """
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            query = '''
+                DELETE FROM attendance_records
+                WHERE id = ?
+            '''
+            cursor.execute(query, (attendance_record.id,))
+            conn.commit()
+            logger.info(
+                f"Deleted attendance record for id {attendance_record.id}")
+        finally:
+            conn.close()
+
+    def update_attendance_record(self, attendance_record):
+        """
+        Update a single AttendanceRecord in the database.
+        """
+        conn = self.get_connection()
+        try:
+            cursor = conn.cursor()
+            query = '''
+                UPDATE attendance_records
+                SET 
+                    username = ?,
+                    status = ?,
+                    punch_type = ?,
+                    processed = ?,
+                    timestamp = ?
+                WHERE id = ?
+            '''
+            cursor.execute(query, (
+                attendance_record.username,
+                attendance_record.status,
+                attendance_record.punch_type,
+                attendance_record.processed,
+                attendance_record.timestamp,
+                attendance_record.id
+            ))
+            conn.commit()
+            logger.info(
+                f"Updated attendance record for id {attendance_record.id}")
+        finally:
+            conn.close()
+
+    def get_attendance_records(self, order_by = 'username', processed = '0'):
         """Retrieve unprocessed attendance records as a list of AttendanceRecord objects."""
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        cursor.execute('''
-            SELECT * FROM attendance_records 
-            WHERE processed = ?
-            ORDER BY username ASC
-        ''', processed)
+        # Use string formatting to safely insert the column name in ORDER BY
+        query = f'''
+                SELECT * FROM attendance_records 
+                WHERE processed = ?
+                ORDER BY timestamp, {order_by} ASC
+            '''
+
+        cursor.execute(query, (processed,))
 
         rows = cursor.fetchall()
         conn.close()
 
         return [
             AttendanceRecord(
+                id=row['id'],
                 user_id=row['user_id'], username=row['username'], timestamp=row['timestamp'],
                 status=row['status'], punch_type=row['punch_type'], processed=row['processed']
             )

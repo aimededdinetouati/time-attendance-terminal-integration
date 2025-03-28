@@ -3,7 +3,7 @@ from zk import ZK, const
 from datetime import datetime
 import time
 
-from src.database.models import User
+from src.database.models import User, AttendanceRecord
 
 logger = logging.getLogger(__name__)
 
@@ -61,18 +61,16 @@ class AttendanceProcessor:
             for record in attendance:
                 username = users_map[record.user_id]
                 # Parse attendance data
-                processed_record = {
-                    'user_id': record.user_id,
-                    'username': username,
-                    'timestamp': record.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
-                    'status': record.status,
-                    'punch_type': record.punch
-                }
-                processed_records.append(processed_record)
 
-                # Log each record for debugging
-                logger.debug(
-                    f"Attendance: {record.user_id} : {processed_record['timestamp']} ({record.status}, {record.punch})")
+                processed_record = AttendanceRecord (
+                    uid = record.uid,
+                    user_id = record.user_id,
+                    username = username,
+                    timestamp = record.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                    status = record.status,
+                    punch_type = record.punch
+                )
+                processed_records.append(processed_record)
 
             logger.info(f"Retrieved {len(processed_records)} attendance records")
             return processed_records

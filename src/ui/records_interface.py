@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 import logging
 from typing import Optional, List
 
@@ -13,20 +13,18 @@ logger = logging.getLogger(__name__)
 
 class RecordsInterface:
     """
-    A GUI interface for displaying attendance records from the database.
+    A GUI interface for displaying and managing attendance records from the database.
     """
 
-    def __init__(self, root: Optional[tk.Tk], db_manager: Optional[DatabaseManager] = None):
+    def __init__(self, root: Optional[tk.Tk], users = None, db_manager: Optional[DatabaseManager] = None):
         """
         Initialize the RecordsInterface.
-
-        Args:
-            root: The parent Tkinter window.
-            db_manager: Optional database manager instance; if not provided, a new instance is created.
         """
         self.db_manager = db_manager or DatabaseManager()
         self.uploader = APIUploader(self.db_manager)
         self.root = tk.Toplevel(root)
+        self.users = users
+
         self.root.title("Attendance Records")
         self.root.geometry("800x600")
         self.root.resizable(True, True)
@@ -42,7 +40,6 @@ class RecordsInterface:
         self.load_records()
         self.display_records()
 
-
     def show(self):
         """Display the records window as a modal dialog."""
         self.root.grab_set()
@@ -50,7 +47,6 @@ class RecordsInterface:
     def load_records(self):
         """
         Load attendance records from the database.
-        Sets self.records to an empty list if no records are found.
         """
         try:
             records = self.db_manager.get_attendance_records()
@@ -68,79 +64,207 @@ class RecordsInterface:
     def display_records(self):
         """
         Display the attendance records in the main frame.
-        If there are no records, shows a message.
         """
-        # Clear previous widgets in the main frame if any.
+        # Clear previous widgets.
         for widget in self.main_frame.winfo_children():
             widget.destroy()
 
-        # Title label for the records section.
         title_label = ttk.Label(self.main_frame, text="Attendance Records", font=("Arial", 14, "bold"))
         title_label.pack(pady=(0, 10))
 
-        # If no records exist, display a message.
-        if not self.records:
-            no_record_label = ttk.Label(self.main_frame, text="No attendance records to display.", foreground="red")
-            no_record_label.pack(pady=20)
-        else:
-            # Create a Treeview widget to display records in a table.
-            # Added new column "processed"
-            columns = ("user_id", "timestamp", "status", "punch_type", "processed")
-            tree = ttk.Treeview(self.main_frame, columns=columns, show="headings", selectmode="browse")
+        # Create the Treeview.
+        columns = ("id", "username", "timestamp", "punch_type", "processed")
+        self.tree = ttk.Treeview(self.main_frame, columns=columns, show="headings", selectmode="browse")
 
-            # Define headings for each column.
-            tree.heading("user_id", text="User ID")
-            tree.heading("timestamp", text="Timestamp")
-            tree.heading("status", text="Status")
-            tree.heading("punch_type", text="Punch Type")
-            tree.heading("processed", text="Processed")
+        # Define headings.
+        self.tree.heading("id", text="ID")
+        self.tree.heading("username", text="Employee Code")
+        self.tree.heading("timestamp", text="Timestamp")
+        self.tree.heading("punch_type", text="Punch Type")
+        self.tree.heading("processed", text="Processed")
 
-            # Set the width for each column.
-            tree.column("user_id", width=100, anchor=tk.CENTER)
-            tree.column("timestamp", width=200, anchor=tk.CENTER)
-            tree.column("status", width=100, anchor=tk.CENTER)
-            tree.column("punch_type", width=100, anchor=tk.CENTER)
-            tree.column("processed", width=100, anchor=tk.CENTER)
+        # Define columns.
+        self.tree.column("id", width=50, anchor=tk.CENTER)
+        self.tree.column("username", width=150, anchor=tk.CENTER)
+        self.tree.column("timestamp", width=220, anchor=tk.CENTER)
+        self.tree.column("punch_type", width=100, anchor=tk.CENTER)
+        self.tree.column("processed", width=100, anchor=tk.CENTER)
 
-            # Insert each AttendanceRecord instance into the Treeview.
-            for record in self.records:
-                user_id = record.user_id
-                timestamp = record.timestamp if record.timestamp else "N/A"
-                status = record.status
-                punch_type = record.punch_type
-                processed = "Yes" if record.processed else "No"  # New column based on processed boolean
+        # Insert records into the Treeview.
+        for record in self.records:
+            processed_text = "Yes" if record.processed else "No"
+            self.tree.insert("", tk.END, values=(
+                record.id,
+                record.username,
+                record.timestamp if record.timestamp else "N/A",
+                record.punch_type,
+                processed_text
+            ))
+        self.tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-                tree.insert("", tk.END, values=(user_id, timestamp, status, punch_type, processed))
+        # Add vertical scrollbar.
+        scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscroll=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-            # Add a vertical scrollbar for the Treeview.
-            scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=tree.yview)
-            tree.configure(yscroll=scrollbar.set)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-            tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Add CRUD buttons.
+        btn_frame = ttk.Frame(self.main_frame)
+        btn_frame.pack(fill=tk.X, pady=5)
 
-        # Re-add the "SYNCHRONIZE" button after clearing and rebuilding widgets.
-        synchronize_button = ttk.Button(self.main_frame, text="SYNCHRONIZE", command=self.synchronize_records)
-        synchronize_button.pack(side=tk.BOTTOM, pady=10)
+        add_btn = ttk.Button(btn_frame, text="Add Record", command=self.add_record)
+        add_btn.pack(side=tk.LEFT, padx=5)
+
+        update_btn = ttk.Button(btn_frame, text="Update Record", command=self.update_record)
+        update_btn.pack(side=tk.LEFT, padx=5)
+
+        delete_btn = ttk.Button(btn_frame, text="Delete Record", command=self.delete_record)
+        delete_btn.pack(side=tk.LEFT, padx=5)
+
+        # SYNCHRONIZE button remains at the bottom.
+        sync_btn = ttk.Button(self.main_frame, text="SYNCHRONIZE", command=self.synchronize_records)
+        sync_btn.pack(side=tk.BOTTOM, pady=10)
+
+    def add_record(self):
+        """
+        Open a form to add a new attendance record.
+        """
+        form = tk.Toplevel(self.root)
+        form.title("Add Attendance Record")
+
+        fields = ("username", "timestamp", "punch_type", "processed")
+        entries = {}
+
+        for idx, field in enumerate(fields):
+            ttk.Label(form, text=field.capitalize() + ":").grid(row=idx, column=0, sticky=tk.W, padx=5, pady=5)
+            entry = ttk.Entry(form)
+            entry.grid(row=idx, column=1, padx=5, pady=5)
+            entries[field] = entry
+
+        def submit():
+            try:
+                # Create a dictionary from form entries.
+                record_data = {field: entries[field].get() for field in fields}
+                # Optionally convert types as needed, e.g. processed to boolean.
+
+                users_map = {user.name : user.user_id for user in self.users} if self.users else {}
+                record_data['user_id'] = users_map[record_data['username']]
+                record_data['processed'] = bool(int(record_data.get('processed', 0)))
+                self.db_manager.save_attendance_record(record_data)
+                self.show_success("Record added successfully.")
+                form.destroy()
+                self.load_records()
+                self.display_records()
+            except Exception as e:
+                self.handle_error("Error adding record", e)
+
+        submit_btn = ttk.Button(form, text="Submit", command=submit)
+        submit_btn.grid(row=len(fields), column=0, columnspan=2, pady=10)
+
+    def update_record(self):
+        """
+        Update the selected attendance record.
+        """
+        selected_item = self.tree.selection()
+        if not selected_item:
+            self.show_error("Please select a record to update.")
+            return
+
+        # Get the selected record's values.
+        record_values = self.tree.item(selected_item, "values")
+        # Assuming the first column is the id.
+        record_id = record_values[0]
+
+        # Retrieve the full record from self.records.
+        record = next((r for r in self.records if str(r.id) == str(record_id)), None)
+        if not record:
+            self.show_error("Record not found.")
+            return
+
+        form = tk.Toplevel(self.root)
+        form.title("Update Attendance Record")
+        fields = ("username", "timestamp", "status", "punch_type", "processed")
+        entries = {}
+
+        # Pre-populate form with current values.
+        initial_values = {
+            "username": record.username,
+            "timestamp": record.timestamp,
+            "status": record.status,
+            "punch_type": record.punch_type,
+            "processed": "1" if record.processed else "0"
+        }
+
+        for idx, field in enumerate(fields):
+            ttk.Label(form, text=field.capitalize() + ":").grid(row=idx, column=0, sticky=tk.W, padx=5, pady=5)
+            entry = ttk.Entry(form)
+            entry.insert(0, initial_values[field])
+            entry.grid(row=idx, column=1, padx=5, pady=5)
+            entries[field] = entry
+
+        def submit():
+            try:
+                # Update record with form values.
+                record.username = entries["username"].get()
+                record.timestamp = entries["timestamp"].get()
+                record.status = entries["status"].get()
+                record.punch_type = entries["punch_type"].get()
+                record.processed = bool(int(entries["processed"].get()))
+                # Call update in the database.
+                self.db_manager.update_attendance_record(record)
+                self.show_success("Record updated successfully.")
+                form.destroy()
+                self.load_records()
+                self.display_records()
+            except Exception as e:
+                self.handle_error("Error updating record", e)
+
+        submit_btn = ttk.Button(form, text="Submit", command=submit)
+        submit_btn.grid(row=len(fields), column=0, columnspan=2, pady=10)
+
+    def delete_record(self):
+        """
+        Delete the selected attendance record.
+        """
+        selected_item = self.tree.selection()
+        if not selected_item:
+            self.show_error("Please select a record to delete.")
+            return
+
+        # Confirm deletion.
+        if not messagebox.askyesno("Confirm Delete", "Are you sure you want to delete the selected record?", parent=self.root):
+            return
+
+        record_values = self.tree.item(selected_item, "values")
+        record_id = record_values[0]
+
+        record = next((r for r in self.records if str(r.id) == str(record_id)), None)
+        if not record:
+            self.show_error("Record not found.")
+            return
+
+        try:
+            self.db_manager.delete_attendance_record(record)
+            self.show_success("Record deleted successfully.")
+            self.load_records()
+            self.display_records()
+        except Exception as e:
+            self.handle_error("Error deleting record", e)
 
     def synchronize_records(self):
         """
-        Call the APIClient.upload_attendance function to synchronize attendance records.
+        Call the uploader to synchronize attendance records.
         """
         try:
             self.uploader.upload_data()
             self.load_records()
             self.display_records()
             logger.info("Records synchronized successfully.")
-
         except Exception as e:
             self.handle_error("Error synchronizing records", e)
 
     def show_error(self, message: str):
         """
         Display an error message to the user.
-
-        Args:
-            message: The error message to display.
         """
         self.status_var.set(message)
         messagebox.showerror("Error", message, parent=self.root)
@@ -148,9 +272,6 @@ class RecordsInterface:
     def show_success(self, message: str):
         """
         Display a success message to the user.
-
-        Args:
-            message: The success message to display.
         """
         self.status_var.set(message)
         messagebox.showinfo("Success", message, parent=self.root)
@@ -158,10 +279,6 @@ class RecordsInterface:
     def handle_error(self, message: str, exception: Exception):
         """
         Log and display an error message.
-
-        Args:
-            message: Contextual message for the error.
-            exception: The exception that occurred.
         """
         error_msg = f"{message}: {exception}"
         logger.error(error_msg)
