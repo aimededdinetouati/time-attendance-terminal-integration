@@ -196,6 +196,22 @@ class APIClient:
             logger.error(f"Error uploading attendance data: {e}")
             return {'success': False, 'message': str(e)}
 
+    def get_employees(self):
+        try:
+            headers = self.get_auth_headers()
+            response = self.session.get(
+                f"{self.api_url}/companymanagement/api/companies/{self.company_id}/employees/minimal?includeInactive=false",
+                headers=headers
+            )
+            response.raise_for_status()
+            employees = response.json()
+
+            return employees
+
+        except Exception as e:
+            logger.error(f"Error importing users: {e}")
+            return {'success': False, 'message': str(e)}
+
     def transform_data(self, pointings):
         result = []
 

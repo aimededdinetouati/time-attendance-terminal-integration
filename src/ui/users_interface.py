@@ -5,14 +5,16 @@ from typing import Optional
 
 from src.database.db_manager import DatabaseManager
 from src.device.attendance_processor import AttendanceProcessor
+from src.scheduler.user_importer import UserImporter
 
 logger = logging.getLogger(__name__)
 
 
 class UsersInterface:
-    def __init__(self, root: Optional[tk.Tk], users = None, db_manager: Optional[DatabaseManager] = None):
+    def __init__(self, root: Optional[tk.Tk], users=None, db_manager: Optional[DatabaseManager] = None):
         self.db_manager = db_manager or DatabaseManager()
         self.processor = None
+        self.user_importer = UserImporter(self.db_manager)
         self.root = tk.Toplevel(root)
         self.users = users
 
@@ -68,10 +70,27 @@ class UsersInterface:
         except Exception as e:
             self.handle_error("Error loading users from attendance processor", e)
 
+    def import_users(self):
+        try:
+            imported = self.user_importer.import_users()
+            self.show_success(f" {imported} users imported successfully")
+            self.load_users()  # Reload the user list after import
+            self.display_list()  # Refresh the display
+        except Exception as e:
+            self.handle_error("Error importing users", e)
+
     def display_list(self):
         # Clear previous widgets in the main frame if any
         for widget in self.main_frame.winfo_children():
             widget.destroy()
+
+        # Create a button frame for actions
+        button_frame = ttk.Frame(self.main_frame)
+        button_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # Add the Import Users button
+        import_button = ttk.Button(button_frame, text="Import Users", command=self.import_users)
+        import_button.pack(side=tk.LEFT, padx=(0, 10))
 
         # Title label for the user list section
         title_label = ttk.Label(self.main_frame, text="User List", font=("Arial", 14, "bold"))

@@ -12,6 +12,7 @@ from config.config import API_URL
 from src.api.api_client import APIClient
 from src.database.db_manager import DatabaseManager
 from src.device.attendance_processor import AttendanceProcessor
+from src.scheduler.user_importer import UserImporter
 from src.ui.config_interface import ConfigInterface
 from src.scheduler.attendance_collector import AttendanceCollector
 from src.scheduler.api_uploader import APIUploader
@@ -50,15 +51,20 @@ class AttendanceSystemApp:
         self.users = None
         self.collector_thread = None
         self.uploader_thread = None
+        self.user_importer_thread = None
         self.collector = AttendanceCollector(self.db_manager)
         self.uploader = APIUploader(self.db_manager)
+        self.user_importer = UserImporter(self.db_manager)
         self.root = tk.Tk()
         self.root.withdraw()
+
+        self.logo_img = None
 
         # UI instance variables for status labels
         self.status_label = None
         self.collector_status_label = None
         self.uploader_status_label = None
+        self.user_importer_status_label = None
 
         # Test status variables
         self.device_test_var = tk.StringVar(value="Device: Not Tested")
@@ -130,7 +136,6 @@ class AttendanceSystemApp:
         return success
 
     def show_control_interface(self):
-        """Show the modernized control interface for managing the collectors."""
         # Configure window basics
         self.root.title("Attendance System Control Panel")
         self.root.geometry("800x600")
@@ -143,6 +148,9 @@ class AttendanceSystemApp:
         # Define a new main background color
         main_bg_color = '#d9d9d9'
 
+        # Load Logo
+        self.load_logo()
+
         # Set styles with the new background color
         style.configure('TFrame', background=main_bg_color)
         style.configure('TLabel', background=main_bg_color, font=('Segoe UI', 10))
@@ -154,9 +162,18 @@ class AttendanceSystemApp:
         main_frame = ttk.Frame(self.root, padding="15", style='TFrame')
         main_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Title Label at the top
-        title_label = ttk.Label(main_frame, text="Attendance System", style='Header.TLabel')
-        title_label.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 15))
+        # Title Label at the top with logo
+        title_frame = ttk.Frame(main_frame, style='TFrame')
+        title_frame.grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 15))
+
+        # Add logo image if available
+        if hasattr(self, 'logo_img'):
+            logo_label = ttk.Label(title_frame, image=self.logo_img, background=main_bg_color)
+            logo_label.pack(side=tk.LEFT, padx=(0, 10))
+
+        # Title next to logo
+        title_label = ttk.Label(title_frame, text="Attendance System", style='Header.TLabel')
+        title_label.pack(side=tk.LEFT)
 
         # Left Panel: System Controls and Connection Tests
         controls_frame = ttk.Frame(main_frame, style='TFrame')
@@ -203,6 +220,9 @@ class AttendanceSystemApp:
         self.uploader_status_var = tk.StringVar(value="Uploader: Stopped")
         self.uploader_status_label = ttk.Label(info_frame, textvariable=self.uploader_status_var, style='TLabel')
         self.uploader_status_label.pack(anchor=tk.W, pady=2)
+        self.user_importer_status_var = tk.StringVar(value="User Importer: Stopped")
+        self.user_importer_status_label = ttk.Label(info_frame, textvariable=self.user_importer_status_var, style='TLabel')
+        self.user_importer_status_label.pack(anchor=tk.W, pady=2)
         self.last_collection_var = tk.StringVar(value="Last collection: Never")
         ttk.Label(info_frame, textvariable=self.last_collection_var, style='TLabel').pack(anchor=tk.W, pady=2)
         self.last_upload_var = tk.StringVar(value="Last upload: Never")
@@ -229,9 +249,19 @@ class AttendanceSystemApp:
 
         self.collector_status_label.config(foreground='red')
         self.uploader_status_label.config(foreground='red')
+        self.user_importer_status_label.config(foreground='red')
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
         self.root.deiconify()
         self.root.mainloop()
+
+    def load_logo(self):
+        try:
+            logo_img = tk.PhotoImage(file="assets/logo.png")
+            logo_img = logo_img.subsample(20, 20) 
+            self.root.iconphoto(True, logo_img)
+            self.logo_img = logo_img
+        except Exception as e:
+            self.logger.error(f"Failed to load logo: {e}")
 
     def show_config_interface(self):
         """Show the configuration interface."""
@@ -247,6 +277,7 @@ class AttendanceSystemApp:
 
         collection_interval = self.config.collection_interval
         upload_interval = self.config.upload_interval
+        import_interval = self.config.import_interval
 
         # Start attendance collector
         self.collector_thread = threading.Thread(
@@ -264,8 +295,17 @@ class AttendanceSystemApp:
         )
         self.uploader_thread.start()
 
+        # Start User Importer
+        self.user_importer_thread = threading.Thread(
+            target=self.user_importer.start_scheduler,
+            args=(import_interval,),
+            daemon=True
+        )
+        self.user_importer_thread.start()
+
         self.logger.info(f"Attendance collector started with interval of {collection_interval} minutes")
         self.logger.info(f"API uploader started with interval of {upload_interval} hours")
+        self.logger.info(f"User Importer started with interval of {import_interval} hours")
         return True
 
     def stop_collectors(self):
@@ -275,6 +315,9 @@ class AttendanceSystemApp:
 
         if self.uploader:
             self.uploader.stop_scheduler()
+
+        if self.user_importer:
+            self.user_importer.stop_scheduler()
 
         self.logger.info("Attendance collectors stopped")
 
@@ -287,6 +330,8 @@ class AttendanceSystemApp:
             self.collector_status_label.config(foreground='green')  # Running
             self.uploader_status_var.set("Uploader: Running")
             self.uploader_status_label.config(foreground='green')  # Running
+            self.user_importer_status_var.set("Importer: Running")
+            self.user_importer_status_label.config(foreground='green')  # Running
             self.start_button.config(state=tk.DISABLED)
             self.stop_button.config(state=tk.NORMAL)
         else:
@@ -301,6 +346,8 @@ class AttendanceSystemApp:
         self.collector_status_label.config(foreground='red')  # Stopped
         self.uploader_status_var.set("Uploader: Stopped")
         self.uploader_status_label.config(foreground='red')  # Stopped
+        self.user_importer_status_var.set("Uploader: Stopped")
+        self.user_importer_status_label.config(foreground='red')  # Stopped
         self.start_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
 
