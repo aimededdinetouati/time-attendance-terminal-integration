@@ -36,6 +36,7 @@ class DatabaseManager:
             device_port INTEGER NOT NULL,
             collection_interval INTEGER NOT NULL,
             upload_interval INTEGER NOT NULL,
+            import_interval INTEGER NOT NULL DEFAULT 12,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -83,21 +84,21 @@ class DatabaseManager:
             cursor.execute('''
             UPDATE config SET 
                 company_id = ?, api_username = ?, api_password = ?, 
-                device_ip = ?, device_port = ?, collection_interval = ?, upload_interval = ?, updated_at = ? 
+                device_ip = ?, device_port = ?, collection_interval = ?, upload_interval = ?, import_interval = ?, updated_at = ? 
             WHERE id = ?
             ''', (
                 config.company_id, config.api_username, config.api_password,
                 config.device_ip, config.device_port, config.collection_interval,
-                config.upload_interval, datetime.now(), existing_config['id']
+                config.upload_interval, config.import_interval, datetime.now(), existing_config['id']
             ))
         else:
             cursor.execute('''
             INSERT INTO config (
-                company_id, api_username, api_password, device_ip, device_port, collection_interval, upload_interval
+                company_id, api_username, api_password, device_ip, device_port, collection_interval, upload_interval, import_interval
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
             ''', (
                 config.company_id, config.api_username, config.api_password,
-                config.device_ip, config.device_port, config.collection_interval, config.upload_interval
+                config.device_ip, config.device_port, config.collection_interval, config.upload_interval, config.import_interval
             ))
 
         conn.commit()
@@ -118,7 +119,7 @@ class DatabaseManager:
                 company_id=row['company_id'], api_username=row['api_username'],
                 api_password=row['api_password'], device_ip=row['device_ip'],
                 device_port=row['device_port'], collection_interval=row['collection_interval'],
-                upload_interval=row['upload_interval']
+                upload_interval=row['upload_interval'], import_interval=row['import_interval']
             )
         return None
 
