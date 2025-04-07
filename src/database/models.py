@@ -15,6 +15,7 @@ class Config:
     device_port: int = 4370
     collection_interval: Optional[int] = None
     upload_interval: Optional[int] = None
+    import_interval: Optional[int] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

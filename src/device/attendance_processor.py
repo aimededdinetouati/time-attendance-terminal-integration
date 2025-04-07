@@ -32,6 +32,19 @@ class AttendanceProcessor:
             self.conn.disconnect()
             logger.info("Disconnected from ZK device")
 
+    def set_user(self, emp_id, code):
+        if not self.conn:
+            logger.error("Not connected to ZK device")
+            return None
+        try:
+            self.conn.set_user(
+                name=code,
+                user_id=str(emp_id)
+            )
+        except Exception as e:
+            logger.error(f"Error setting user: {e}")
+
+
     def get_users(self):
         """Get users from the device"""
         if not self.conn:
