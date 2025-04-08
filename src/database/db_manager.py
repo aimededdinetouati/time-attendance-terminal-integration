@@ -216,28 +216,38 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    def get_attendance_records(self, order_by = 'username', processed = '0'):
-        """Retrieve unprocessed attendance records as a list of AttendanceRecord objects."""
+    def get_attendance_records(self, filter_processed=None, order_by='timestamp'):
         conn = self.get_connection()
         cursor = conn.cursor()
 
-        # Use string formatting to safely insert the column name in ORDER BY
+        # Base query
         query = f'''
-                SELECT * FROM attendance_records 
-                WHERE processed = ?
-                ORDER BY timestamp, {order_by} ASC
-            '''
+            SELECT * FROM attendance_records 
+        '''
 
-        cursor.execute(query, (processed,))
+        params = []
 
+        # Add WHERE clause if filtering by processed status
+        if filter_processed is not None:
+            query += 'WHERE processed = ? '
+            params.append(filter_processed)
+
+        # Add ORDER BY clause
+        query += f'ORDER BY {order_by} ASC'
+
+        cursor.execute(query, params)
         rows = cursor.fetchall()
         conn.close()
 
         return [
             AttendanceRecord(
                 id=row['id'],
-                user_id=row['user_id'], username=row['username'], timestamp=row['timestamp'],
-                status=row['status'], punch_type=row['punch_type'], processed=row['processed']
+                user_id=row['user_id'],
+                username=row['username'],
+                timestamp=row['timestamp'],
+                status=row['status'],
+                punch_type=row['punch_type'],
+                processed=row['processed']
             )
             for row in rows
         ]
