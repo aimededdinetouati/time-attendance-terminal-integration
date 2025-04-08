@@ -18,28 +18,145 @@ class UsersInterface:
         self.root = tk.Toplevel(root)
         self.users = users
 
-        self.root.title("User List")
+        # Configure window properties
+        self.root.title("User Management")
         self.root.geometry("800x600")
+        self.root.minsize(600, 400)
         self.root.resizable(True, True)
 
+        # Status variable for displaying messages
         self.status_var = tk.StringVar()
 
-        # Create main layout frame
+        # Create and configure the main layout
+        self.setup_ui()
+
+        # Load data if not provided
+        if not self.users:
+            self.load_users()
+
+        # Populate the user list
+        self.refresh_user_list()
+
+    def setup_ui(self):
+        """Create and configure all UI elements"""
+        # Main container with padding
         self.main_frame = ttk.Frame(self.root, padding="20")
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        if not self.users:
-            self.load_users()
-        self.display_list()
+        # Header section
+        self.create_header_section()
+
+        # User list section with frame
+        self.create_user_list_section()
+
+        # Status bar at the bottom
+        self.create_status_bar()
+
+    def create_header_section(self):
+        """Create the header section with title and action buttons"""
+        # Header frame
+        header_frame = ttk.Frame(self.main_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # Title
+        title_label = ttk.Label(header_frame, text="User Management", font=("Arial", 16, "bold"))
+        title_label.pack(side=tk.LEFT)
+
+        # Action buttons frame (right-aligned)
+        action_frame = ttk.Frame(header_frame)
+        action_frame.pack(side=tk.RIGHT)
+
+        # Import button with icon indicator
+        self.import_button = ttk.Button(
+            action_frame,
+            text="Import Users",
+            command=self.import_users,
+            style="Action.TButton"
+        )
+        self.import_button.pack(side=tk.RIGHT, padx=5)
+
+        # Refresh button
+        refresh_button = ttk.Button(
+            action_frame,
+            text="Refresh List",
+            command=self.refresh_data
+        )
+        refresh_button.pack(side=tk.RIGHT, padx=5)
+
+    def create_user_list_section(self):
+        """Create the user list section with a frame and treeview"""
+        # Container frame for user list
+        self.list_container = ttk.LabelFrame(self.main_frame, text="User List")
+        self.list_container.pack(fill=tk.BOTH, expand=True, pady=10)
+
+        # Create Treeview with scrollbars
+        self.create_user_treeview()
+
+    def create_user_treeview(self):
+        """Create and configure the treeview for displaying users"""
+        # Frame to contain treeview and scrollbars
+        tree_frame = ttk.Frame(self.list_container)
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Define columns
+        columns = ("id", "name")
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="browse")
+
+        # Configure column headings
+        self.tree.heading("id", text="User ID")
+        self.tree.heading("name", text="Employee Code")
+
+        # Configure column widths and alignment
+        self.tree.column("id", width=100, anchor=tk.CENTER)
+        self.tree.column("name", width=300, anchor=tk.W)
+
+        # Add vertical scrollbar
+        vsb = ttk.Scrollbar(tree_frame, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscroll=vsb.set)
+
+        # Add horizontal scrollbar
+        hsb = ttk.Scrollbar(tree_frame, orient=tk.HORIZONTAL, command=self.tree.xview)
+        self.tree.configure(xscroll=hsb.set)
+
+        # Position scrollbars and treeview using grid
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+
+        # Configure grid weights
+        tree_frame.grid_rowconfigure(0, weight=1)
+        tree_frame.grid_columnconfigure(0, weight=1)
+
+        # Double-click event (optional for future user detail view)
+        self.tree.bind("<Double-1>", self.on_user_double_click)
+
+    def create_status_bar(self):
+        """Create status bar at the bottom of the window"""
+        status_frame = ttk.Frame(self.main_frame)
+        status_frame.pack(fill=tk.X, pady=(10, 0))
+
+        # Status label with status_var
+        status_label = ttk.Label(status_frame, textvariable=self.status_var)
+        status_label.pack(side=tk.LEFT)
+
+        # Default status message
+        self.status_var.set("Ready")
 
     def show(self):
-        self.root.grab_set()
+        """Make the window visible and set focus"""
+        self.root.grab_set()  # Make this window modal
+        self.root.focus_set()  # Set keyboard focus
 
     def initialize(self):
         """Initialize the attendance processor with config from the database."""
+        # Set status message
+        self.status_var.set("Initializing connection...")
+        self.root.update()  # Force UI update
+
         config = self.db_manager.get_config()
         if not config:
             logger.error("No configuration found in database")
+            self.status_var.set("Error: No configuration found")
             return False
 
         self.processor = AttendanceProcessor(
@@ -47,109 +164,101 @@ class UsersInterface:
             port=config.device_port
         )
 
-        return self.processor.connect()
+        success = self.processor.connect()
+        if success:
+            self.status_var.set("Connection established")
+        else:
+            self.status_var.set("Connection failed")
+
+        return success
 
     def load_users(self):
-        # Ensure the processor is initialized.
+        """Load users from the attendance processor"""
+        # Ensure the processor is initialized
         if not self.processor:
             if not self.initialize():
                 logger.error("Failed to initialize attendance processor")
                 return
 
         try:
-            # Retrieve users only from the attendance processor.
+            # Update status
+            self.status_var.set("Loading users...")
+            self.root.update()  # Force UI update
+
+            # Retrieve users from the attendance processor
             users = self.processor.get_users()
             if not users:
                 logger.info("No users found from attendance processor.")
                 self.users = []
+                self.status_var.set("No users found")
                 return
 
-            print("Loaded users from attendance processor:", users)
+            logger.info(f"Loaded {len(users)} users from attendance processor")
             self.users = users
+            self.status_var.set(f"{len(users)} users loaded")
 
         except Exception as e:
             self.handle_error("Error loading users from attendance processor", e)
 
+    def refresh_data(self):
+        """Refresh the user data and update the display"""
+        self.load_users()
+        self.refresh_user_list()
+
     def import_users(self):
+        """Import users using the UserImporter and refresh the display"""
         try:
+            self.status_var.set("Importing users...")
+            self.root.update()  # Force UI update
+
             imported = self.user_importer.import_users()
-            self.show_success(f" {imported} users imported successfully")
+            self.show_success(f"{imported} users imported successfully")
             self.load_users()  # Reload the user list after import
-            self.display_list()  # Refresh the display
+            self.refresh_user_list()  # Refresh the display
         except Exception as e:
             self.handle_error("Error importing users", e)
 
-    def display_list(self):
-        # Clear previous widgets in the main frame if any
-        for widget in self.main_frame.winfo_children():
-            widget.destroy()
+    def refresh_user_list(self):
+        """Update the treeview with current user data"""
+        # Clear existing items
+        for item in self.tree.get_children():
+            self.tree.delete(item)
 
-        # Create a button frame for actions
-        button_frame = ttk.Frame(self.main_frame)
-        button_frame.pack(fill=tk.X, pady=(0, 10))
-
-        # Add the Import Users button
-        import_button = ttk.Button(button_frame, text="Import Users", command=self.import_users)
-        import_button.pack(side=tk.LEFT, padx=(0, 10))
-
-        # Title label for the user list section
-        title_label = ttk.Label(self.main_frame, text="User List", font=("Arial", 14, "bold"))
-        title_label.pack(pady=(0, 10))
-
-        # If no users are loaded, display a simple message.
+        # If no users, display a message in the status bar
         if not self.users or len(self.users) == 0:
-            no_user_label = ttk.Label(self.main_frame, text="No users to display.", foreground="red")
-            no_user_label.pack(pady=20)
-        else:
-            # Create a Treeview widget to display users in a table-like view.
-            columns = ("id", "name")
-            tree = ttk.Treeview(self.main_frame, columns=columns, show="headings", selectmode="browse")
+            self.status_var.set("No users to display")
+            return
 
-            # Define headings for each column.
-            tree.heading("id", text="ID")
-            tree.heading("name", text="Name")
+        # Insert user data into the treeview
+        for user in self.users:
+            user_id = user.get("id", "N/A") if isinstance(user, dict) else getattr(user, "user_id", "N/A")
+            name = user.get("name", "N/A") if isinstance(user, dict) else getattr(user, "name", "N/A")
+            self.tree.insert("", tk.END, values=(user_id, name))
 
-            # Optionally, set the width for each column.
-            tree.column("id", width=50, anchor=tk.CENTER)
-            tree.column("name", width=50, anchor=tk.W)
+        # Update status message
+        self.status_var.set(f"Displaying {len(self.users)} users")
 
-            # Insert user data into the Treeview.
-            for user in self.users:
-                user_id = user.get("id", "N/A") if isinstance(user, dict) else getattr(user, "user_id", "N/A")
-                name = user.get("name", "N/A") if isinstance(user, dict) else getattr(user, "name", "N/A")
-                tree.insert("", tk.END, values=(user_id, name))
-
-            # Add a vertical scrollbar
-            scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=tree.yview)
-            tree.configure(yscroll=scrollbar.set)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-            tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+    def on_user_double_click(self, event):
+        """Handle double-click on a user row (placeholder for future functionality)"""
+        item = self.tree.selection()[0] if self.tree.selection() else None
+        if item:
+            values = self.tree.item(item, "values")
+            user_id = values[0]
+            # Placeholder for future user detail view
+            self.status_var.set(f"Selected user ID: {user_id}")
 
     def show_error(self, message: str):
-        """Show an error message.
-
-        Args:
-            message: Error message to display
-        """
-        self.status_var.set(message)
+        """Show an error message dialog and update status bar"""
+        self.status_var.set(f"Error: {message}")
         messagebox.showerror("Error", message, parent=self.root)
 
     def show_success(self, message: str):
-        """Show a success message.
-
-        Args:
-            message: Success message to display
-        """
+        """Show a success message dialog and update status bar"""
         self.status_var.set(message)
         messagebox.showinfo("Success", message, parent=self.root)
 
     def handle_error(self, message: str, exception: Exception):
-        """Log and display errors.
-
-        Args:
-            message: Error context message
-            exception: The exception that occurred
-        """
+        """Log and display errors with context"""
         error_msg = f"{message}: {exception}"
-        self.show_error(error_msg)
         logger.error(error_msg)
+        self.show_error(error_msg)
