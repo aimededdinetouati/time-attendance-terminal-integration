@@ -356,10 +356,11 @@ class AttendanceSystemApp:
 
     def load_logo(self):
         try:
-            logo_img = tk.PhotoImage(file="assets/logo.png")
+            logo_path = self.resource_path("assets/logo.png")
+            logo_img = tk.PhotoImage(file=logo_path)
             logo_img = logo_img.subsample(20, 20)
             self.root.iconphoto(True, logo_img)
-            self.logo_img = logo_img
+            self.logo_img = logo_img  # Keep a reference to prevent garbage collection
         except Exception as e:
             self.logger.error(f"Failed to load logo: {e}")
 
@@ -531,6 +532,16 @@ class AttendanceSystemApp:
         else:
             # Default to showing the control interface
             self.show_control_interface()
+
+    def resource_path(self, relative_path):
+        """ Get absolute path to resource, works for dev and for PyInstaller """
+        try:
+            # PyInstaller creates a temp folder and stores path in _MEIPASS
+            base_path = sys._MEIPASS
+        except AttributeError:
+            base_path = os.path.abspath(".")
+
+        return os.path.join(base_path, relative_path)
 
 
 # Main entry point
