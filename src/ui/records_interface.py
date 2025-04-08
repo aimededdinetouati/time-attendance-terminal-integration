@@ -16,7 +16,7 @@ class RecordsInterface:
     A GUI interface for displaying and managing attendance records from the database.
     """
 
-    def __init__(self, root: Optional[tk.Tk], users = None, db_manager: Optional[DatabaseManager] = None):
+    def __init__(self, root: Optional[tk.Tk], users=None, db_manager: Optional[DatabaseManager] = None):
         """
         Initialize the RecordsInterface.
         """
@@ -26,11 +26,15 @@ class RecordsInterface:
         self.users = users
 
         self.root.title("Attendance Records")
-        self.root.geometry("800x600")
+        self.root.geometry("1000x800")
         self.root.resizable(True, True)
 
         self.status_var = tk.StringVar()
         self.records: List[AttendanceRecord] = []
+
+        # Filter variables
+        self.filter_var = tk.StringVar(value="all")  # Default to showing all records
+        self.sort_var = tk.StringVar(value="timestamp")  # Default sorting
 
         # Create main layout frame.
         self.main_frame = ttk.Frame(self.root, padding="20")
@@ -46,17 +50,27 @@ class RecordsInterface:
 
     def load_records(self):
         """
-        Load attendance records from the database.
+        Load attendance records from the database based on current filter.
         """
         try:
-            records = self.db_manager.get_attendance_records()
+            filter_value = self.filter_var.get()
+            order_by = self.sort_var.get()
+
+            # Convert filter value to the appropriate parameter
+            filter_processed = None  # Default to all records
+            if filter_value == "processed":
+                filter_processed = 1
+            elif filter_value == "unprocessed":
+                filter_processed = 0
+
+            records = self.db_manager.get_attendance_records(filter_processed=filter_processed, order_by=order_by)
             if not records:
-                logger.info("No attendance records found in the database.")
+                logger.info(f"No {filter_value} attendance records found in the database.")
                 self.records = []
                 return
 
             self.records = records  # Expecting a list of AttendanceRecord instances
-            logger.info("Attendance records loaded successfully.")
+            logger.info(f"Loaded {len(records)} {filter_value} attendance records successfully.")
 
         except Exception as e:
             self.handle_error("Error loading attendance records", e)
@@ -71,6 +85,28 @@ class RecordsInterface:
 
         title_label = ttk.Label(self.main_frame, text="Attendance Records", font=("Arial", 14, "bold"))
         title_label.pack(pady=(0, 10))
+
+        # Add filter controls
+        filter_frame = ttk.Frame(self.main_frame)
+        filter_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # Filter radio buttons
+        ttk.Label(filter_frame, text="Filter:").pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Radiobutton(filter_frame, text="All", variable=self.filter_var, value="all").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(filter_frame, text="Processed", variable=self.filter_var, value="processed").pack(side=tk.LEFT,
+                                                                                                          padx=5)
+        ttk.Radiobutton(filter_frame, text="Unprocessed", variable=self.filter_var, value="unprocessed").pack(
+            side=tk.LEFT, padx=5)
+
+        # Sort options
+        ttk.Label(filter_frame, text="Sort by:").pack(side=tk.LEFT, padx=(20, 10))
+        sort_combo = ttk.Combobox(filter_frame, textvariable=self.sort_var,
+                                  values=["timestamp", "username", "id", "punch_type"])
+        sort_combo.pack(side=tk.LEFT, padx=5)
+
+        # Apply button
+        apply_btn = ttk.Button(filter_frame, text="Apply Filter", command=self.apply_filter)
+        apply_btn.pack(side=tk.LEFT, padx=(20, 0))
 
         # Create the Treeview.
         columns = ("id", "username", "timestamp", "punch_type", "processed")
@@ -92,7 +128,7 @@ class RecordsInterface:
 
         # Insert records into the Treeview.
         for record in self.records:
-            processed_text = "Yes" if record.processed else "No"
+            processed_text = "Yes" if record.processed == 1 else "No"
             self.tree.insert("", tk.END, values=(
                 record.id,
                 record.username,
@@ -100,6 +136,11 @@ class RecordsInterface:
                 record.punch_type,
                 processed_text
             ))
+
+        # Add record count label
+        count_label = ttk.Label(self.main_frame, text=f"Showing {len(self.records)} records")
+        count_label.pack(anchor=tk.W, padx=10, pady=(5, 0))
+
         self.tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # Add vertical scrollbar.
@@ -124,6 +165,11 @@ class RecordsInterface:
         sync_btn = ttk.Button(self.main_frame, text="SYNCHRONIZE", command=self.synchronize_records)
         sync_btn.pack(side=tk.BOTTOM, pady=10)
 
+    def apply_filter(self):
+        """Apply the selected filter and sort options"""
+        self.load_records()
+        self.display_records()
+
     def add_record(self):
         """
         Open a form to add a new attendance record.
@@ -146,7 +192,7 @@ class RecordsInterface:
                 record_data = {field: entries[field].get() for field in fields}
                 # Optionally convert types as needed, e.g. processed to boolean.
 
-                users_map = {user.name : user.user_id for user in self.users} if self.users else {}
+                users_map = {user.name: user.user_id for user in self.users} if self.users else {}
                 record_data['user_id'] = users_map[record_data['username']]
                 record_data['processed'] = bool(int(record_data.get('processed', 0)))
                 self.db_manager.save_attendance_record(record_data)
@@ -231,7 +277,8 @@ class RecordsInterface:
             return
 
         # Confirm deletion.
-        if not messagebox.askyesno("Confirm Delete", "Are you sure you want to delete the selected record?", parent=self.root):
+        if not messagebox.askyesno("Confirm Delete", "Are you sure you want to delete the selected record?",
+                                   parent=self.root):
             return
 
         record_values = self.tree.item(selected_item, "values")
