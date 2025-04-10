@@ -9,9 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class DatabaseManager:
-    def __init__(self, db_path='data/attendance.db'):
-        """Initialize the database manager with path to SQLite database."""
-        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    def __init__(self, db_path=None):
+        if db_path is None:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # go two levels up
+            db_path = os.path.join(base_dir, 'data', 'attendance.db')
         self.db_path = db_path
         self.initialize_db()
 
@@ -95,7 +96,7 @@ class DatabaseManager:
             cursor.execute('''
             INSERT INTO config (
                 company_id, api_username, api_password, device_ip, device_port, collection_interval, upload_interval, import_interval
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 config.company_id, config.api_username, config.api_password,
                 config.device_ip, config.device_port, config.collection_interval, config.upload_interval, config.import_interval
